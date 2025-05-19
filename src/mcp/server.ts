@@ -23,6 +23,7 @@ import {
 import { validateToolArguments } from './validation';
 import { toolRegistry } from './tools/registry';
 import { promptRegistry } from './prompts/registry';
+import { createError, ErrorCode } from './handlers';
 
 // Cache for resources and subscriptions
 const resourceCache = new NodeCache({
@@ -179,6 +180,11 @@ export class MCPServer {
     // Remove subscription
     if (subscriptions[params.subscriptionId]) {
       delete subscriptions[params.subscriptionId];
+    } else {
+      throw createError(
+        ErrorCode.SUBSCRIPTION_NOT_FOUND,
+        `Subscription '${params.subscriptionId}' not found`
+      );
     }
   }
 
@@ -220,13 +226,20 @@ export class MCPServer {
       // Get the tool from the registry
       const tool = toolRegistry.getTool(toolName);
       if (!tool) {
-        throw this.createError('TOOL_NOT_FOUND', `Tool '${toolName}' not found`);
+        throw createError(
+          ErrorCode.TOOL_NOT_FOUND,
+          `Tool '${toolName}' not found`
+        );
       }
       
       // Validate arguments against the tool's input schema
       const validationResult = validateToolArguments(tool, args);
       if (!validationResult.valid) {
-        throw this.createError('INVALID_ARGUMENTS', validationResult.error || 'Invalid arguments');
+        throw createError(
+          ErrorCode.INVALID_TOOL_ARGUMENTS,
+          validationResult.error || 'Invalid arguments',
+          { toolName, arguments: args }
+        );
       }
       
       // Execute the tool
@@ -248,10 +261,18 @@ export class MCPServer {
       logger.error('Tool execution failed', { toolName, executionId, error });
       
       if (error instanceof Error) {
+        if ('code' in error) {
+          // If it's already an ErrorResponse, return it
+          return {
+            result: null,
+            error: error as unknown as ErrorResponse,
+          };
+        }
+        
         return {
           result: null,
-          error: this.createError(
-            'TOOL_EXECUTION_FAILED',
+          error: createError(
+            ErrorCode.TOOL_EXECUTION_ERROR,
             error.message,
             { toolName, arguments: args }
           ),
@@ -303,7 +324,10 @@ export class MCPServer {
       // Get the prompt from the registry
       const prompt = promptRegistry.getPrompt(promptId);
       if (!prompt) {
-        throw this.createError('PROMPT_NOT_FOUND', `Prompt '${promptId}' not found`);
+        throw createError(
+          ErrorCode.PROMPT_NOT_FOUND,
+          `Prompt '${promptId}' not found`
+        );
       }
       
       // Validate arguments against the prompt's input schema
@@ -328,10 +352,18 @@ export class MCPServer {
       logger.error('Prompt execution failed', { promptId, executionId, error });
       
       if (error instanceof Error) {
+        if ('code' in error) {
+          // If it's already an ErrorResponse, return it
+          return {
+            result: null,
+            error: error as unknown as ErrorResponse,
+          };
+        }
+        
         return {
           result: null,
-          error: this.createError(
-            'PROMPT_EXECUTION_FAILED',
+          error: createError(
+            ErrorCode.PROMPT_EXECUTION_ERROR,
             error.message,
             { promptId, arguments: args }
           ),
@@ -435,39 +467,15 @@ export class MCPServer {
   }
 
   /**
-   * Create a standardized error response
-   * @param code Error code
-   * @param message Error message
-   * @param context Additional context
-   * @returns Error response object
-   */
-  private createError(
-    code: string,
-    message: string,
-    context?: any
-  ): ErrorResponse {
-    return {
-      code,
-      message,
-      context,
-      recovery: {
-        recoverable: false,
-        retryable: false,
-      },
-    };
-  }
-
-  /**
    * Check if the server is initialized
    * @throws Error if the server is not initialized
    */
   private checkInitialized(): void {
     if (!this.initialized) {
-      throw new Error('MCP server not initialized');
+      throw createError(ErrorCode.SERVER_NOT_INITIALIZED, 'MCP server not initialized');
     }
   }
 }
 
 // Create and export a singleton instance
 export const mcpServer = new MCPServer();
-
