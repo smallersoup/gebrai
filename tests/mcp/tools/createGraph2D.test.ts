@@ -1,4 +1,5 @@
 import { createGraph2DTool } from '../../../src/mcp/tools/createGraph2D';
+import * as math from 'mathjs';
 
 // Mock the logger
 jest.mock('../../../src/utils/logger', () => ({
@@ -8,6 +9,19 @@ jest.mock('../../../src/utils/logger', () => ({
     warn: jest.fn(),
     debug: jest.fn(),
   },
+}));
+
+// Mock mathjs
+jest.mock('mathjs', () => ({
+  compile: jest.fn().mockImplementation((expr) => ({
+    evaluate: jest.fn().mockImplementation(({ x }) => {
+      // Simple mock implementation for testing
+      if (expr === 'x**2') {
+        return x * x;
+      }
+      return 0;
+    }),
+  })),
 }));
 
 describe('createGraph2D Tool', () => {
@@ -82,11 +96,10 @@ describe('createGraph2D Tool', () => {
       expect(result.resources?.[0].metadata?.title).toBe('Test Graph');
     });
 
-    it('should handle errors gracefully', async () => {
-      // Mock eval to throw an error
-      const originalEval = global.eval;
-      global.eval = jest.fn(() => {
-        throw new Error('Test error');
+    it('should handle errors gracefully when expression is invalid', async () => {
+      // Mock math.compile to throw an error
+      (math.compile as jest.Mock).mockImplementationOnce(() => {
+        throw new Error('Invalid expression');
       });
 
       const args = {
@@ -95,16 +108,11 @@ describe('createGraph2D Tool', () => {
 
       const result = await createGraph2DTool.execute(args);
 
-      // Restore original eval
-      global.eval = originalEval;
-
-      // We should still get a result with dataPoints, even if some points failed
       expect(result).toBeDefined();
-      expect(result.result).toBeDefined();
-      expect(result.result.visualizationId).toBeDefined();
-      expect(result.resources).toBeDefined();
-      expect(result.resources?.length).toBe(1);
+      expect(result.result).toBeNull();
+      expect(result.error).toBeDefined();
+      expect(result.error?.code).toBe('TOOL_EXECUTION_ERROR');
+      expect(result.error?.message).toContain('Invalid mathematical expression');
     });
   });
 });
-
