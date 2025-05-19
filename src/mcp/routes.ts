@@ -69,11 +69,11 @@ mcpRouter.post('/tools', asyncHandler(async (req, res) => {
  * Execute a tool
  */
 mcpRouter.post('/tools/execute', asyncHandler(async (req, res) => {
-  const result = await mcpServer.executeTool(req.body);
-  
   // Check for execution timeout
   const timeout = parseInt(process.env.REQUEST_TIMEOUT || '1000', 10);
   const startTime = Date.now();
+  
+  const result = await mcpServer.executeTool(req.body);
   
   // If execution takes too long, log a warning
   if (Date.now() - startTime > timeout) {
@@ -153,4 +153,3 @@ mcpRouter.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     },
   });
 });
-
