@@ -1,15 +1,18 @@
 import { Router } from 'express';
-import { mcpServer } from './server';
+import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger';
+import { mcpServer } from './server';
 import {
   handleRequest,
   createRequestHandler,
-  sendSuccess,
-  sendNoContent,
-  mcpErrorHandler,
   ValidationSchemas,
+  sendSuccess,
+  sendError,
+  sendNoContent,
+  sendSSEMessage,
+  sendSSEComment,
   ErrorCode,
-  MCPError,
+  createError
 } from './handlers';
 
 // Create router
@@ -131,6 +134,14 @@ mcpRouter.post('/prompts/execute', createRequestHandler(
 
 /**
  * SSE endpoint for resource change notifications
+ * 
+ * SSE Protocol Format:
+ * - Each message consists of one or more lines of text
+ * - Each line is terminated by a single newline character (\n)
+ * - Messages are separated by two newline characters (\n\n)
+ * - Lines starting with a colon (:) are comments and ignored by clients
+ * - Field format: field: value\n
+ * - Common fields: event, data, id, retry
  */
 mcpRouter.get('/events', (req, res) => {
   // Set headers for SSE
@@ -140,7 +151,7 @@ mcpRouter.get('/events', (req, res) => {
   
   // Send a comment to keep the connection alive
   const keepAlive = setInterval(() => {
-    res.write(': keepalive\\n\\n');
+    sendSSEComment(res, 'keepalive');
   }, 30000);
   
   // Handle client disconnect
@@ -150,8 +161,7 @@ mcpRouter.get('/events', (req, res) => {
   });
   
   // Send initial message
-  res.write('event: connected\\n');
-  res.write(`data: ${JSON.stringify({ connected: true })}\\n\\n`);
+  sendSSEMessage(res, { connected: true }, 'connected', uuidv4());
   
   // In a real implementation, we would register this connection to receive notifications
   // and send them as SSE events
@@ -161,4 +171,3 @@ mcpRouter.get('/events', (req, res) => {
  * Error handler for MCP routes
  */
 mcpRouter.use(mcpErrorHandler);
-
