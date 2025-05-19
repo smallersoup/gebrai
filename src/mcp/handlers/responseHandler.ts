@@ -94,3 +94,61 @@ export function sendAccepted<T = any>(
   sendSuccess(res, data, 202, meta);
 }
 
+/**
+ * Send an SSE message
+ * @param res Express response object
+ * @param data Message data
+ * @param event Event name (optional)
+ * @param id Message ID (optional)
+ * @param retry Retry timeout in milliseconds (optional)
+ */
+export function sendSSEMessage(
+  res: Response,
+  data: any,
+  event?: string,
+  id?: string,
+  retry?: number
+): void {
+  // Add event field if provided
+  if (event) {
+    res.write(`event: ${event}\n`);
+  }
+  
+  // Add id field if provided
+  if (id) {
+    res.write(`id: ${id}\n`);
+  }
+  
+  // Add retry field if provided
+  if (retry) {
+    res.write(`retry: ${retry}\n`);
+  }
+  
+  // Add data field (can be multiple lines)
+  if (typeof data === 'object') {
+    res.write(`data: ${JSON.stringify(data)}\n`);
+  } else if (typeof data === 'string') {
+    // Handle multi-line strings
+    const lines = data.split('\n');
+    for (const line of lines) {
+      res.write(`data: ${line}\n`);
+    }
+  } else {
+    res.write(`data: ${data}\n`);
+  }
+  
+  // End the message with a blank line
+  res.write('\n');
+}
+
+/**
+ * Send an SSE comment (ignored by clients but keeps connection alive)
+ * @param res Express response object
+ * @param comment Comment text
+ */
+export function sendSSEComment(
+  res: Response,
+  comment: string
+): void {
+  res.write(`: ${comment}\n\n`);
+}
