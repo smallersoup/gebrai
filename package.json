@@ -31,7 +31,8 @@
     "uuid": "^9.0.1",
     "axios": "^1.6.2",
     "sse.js": "^1.0.0",
-    "body-parser": "^1.20.2"
+    "body-parser": "^1.20.2",
+    "mathjs": "^12.1.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
@@ -54,4 +55,3 @@
     "typescript": "^5.3.2"
   }
 }
-
