@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Tool, ExecuteToolResult, Resource } from '../types';
 import { logger } from '../../utils/logger';
+import { createError, ErrorCode } from '../handlers';
 
 /**
  * Tool for solving mathematical equations
@@ -71,6 +72,15 @@ export const solveEquationTool: Tool = {
       // Extract arguments
       const { equation, variable, visualize = false } = args;
       
+      // Validate equation format
+      if (!equation.includes('=')) {
+        throw createError(
+          ErrorCode.MATH_PARSING_ERROR,
+          'Equation must contain an equals sign (=)',
+          { equation }
+        );
+      }
+      
       // In a real implementation, this would call the GeoGebra adapter
       // to solve the equation using GeoGebra's CAS
       // For now, we'll create a mock result
@@ -94,7 +104,7 @@ export const solveEquationTool: Tool = {
           },
           {
             description: 'Apply the quadratic formula',
-            equation: `${variable} = (-b ± √(b² - 4ac)) / 2a`,
+            equation: `${variable} = (-b \u00b1 \u221a(b\u00b2 - 4ac)) / 2a`,
           },
           {
             description: 'Substitute values and calculate',
@@ -161,31 +171,28 @@ export const solveEquationTool: Tool = {
       logger.error('Error in solveEquation tool', { error });
       
       if (error instanceof Error) {
+        // If it's already an ErrorResponse, return it
+        if ('code' in error) {
+          return {
+            result: null,
+            error: error as any,
+          };
+        }
+        
         return {
           result: null,
-          error: {
-            code: 'TOOL_EXECUTION_ERROR',
-            message: error.message,
-            recovery: {
-              recoverable: false,
-              retryable: false,
-            },
-          },
+          error: createError(
+            ErrorCode.TOOL_EXECUTION_ERROR,
+            error.message,
+            { toolName: 'solveEquation' }
+          ),
         };
       }
       
       return {
         result: null,
-        error: {
-          code: 'UNKNOWN_ERROR',
-          message: 'An unknown error occurred',
-          recovery: {
-            recoverable: false,
-            retryable: false,
-          },
-        },
+        error: error as any,
       };
     }
   },
 };
-
