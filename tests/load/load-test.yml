@@ -1,0 +1,161 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 60
+      arrivalRate: 10
+      rampTo: 100
+      name: "Ramp up to 100 concurrent users"
+    - duration: 120
+      arrivalRate: 100
+      name: "Sustained load with 100 concurrent users"
+  defaults:
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+
+scenarios:
+  - name: "Initialize and execute tools"
+    flow:
+      # Initialize the MCP server
+      - post:
+          url: "/mcp/initialize"
+          json:
+            capabilities:
+              sampling:
+                supported: true
+              notifications:
+                supported: true
+            clientInfo:
+              name: "Load Test Client"
+              version: "1.0.0"
+          capture:
+            - json: "$.serverInfo.name"
+              as: "serverName"
+          expect:
+            - statusCode: 200
+            - contentType: "application/json"
+            - hasProperty: "capabilities"
+
+      # Get available tools
+      - post:
+          url: "/mcp/tools"
+          json: {}
+          expect:
+            - statusCode: 200
+            - contentType: "application/json"
+
+      # Execute createGraph2D tool
+      - post:
+          url: "/mcp/tools/execute"
+          json:
+            toolName: "createGraph2D"
+            arguments:
+              expression: "y=x^2"
+              xRange: [-5, 5]
+              yRange: [-5, 25]
+              title: "Parabola"
+          capture:
+            - json: "$.result.visualizationId"
+              as: "visualizationId"
+          expect:
+            - statusCode: 200
+            - contentType: "application/json"
+            - hasProperty: "result"
+            - hasProperty: "result.visualizationId"
+
+      # Get resources
+      - post:
+          url: "/mcp/resources"
+          json:
+            resourceTypes: ["visualization/2d-graph"]
+          expect:
+            - statusCode: 200
+            - contentType: "application/json"
+
+      # Subscribe to resources
+      - post:
+          url: "/mcp/resources/subscribe"
+          json:
+            resourceTypes: ["visualization/2d-graph"]
+          capture:
+            - json: "$.subscriptionId"
+              as: "subscriptionId"
+          expect:
+            - statusCode: 200
+            - contentType: "application/json"
+            - hasProperty: "subscriptionId"
+
+      # Execute solveEquation tool
+      - post:
+          url: "/mcp/tools/execute"
+          json:
+            toolName: "solveEquation"
+            arguments:
+              equation: "x^2+2x-3=0"
+              variable: "x"
+              visualize: true
+          expect:
+            - statusCode: 200
+            - contentType: "application/json"
+            - hasProperty: "result"
+            - hasProperty: "result.solutions"
+
+      # Unsubscribe from resources
+      - post:
+          url: "/mcp/resources/unsubscribe"
+          json:
+            subscriptionId: "{{ subscriptionId }}"
+          expect:
+            - statusCode: 200
+            - contentType: "application/json"
+
+  - name: "Health check and prompts"
+    flow:
+      # Health check
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+            - contentType: "application/json"
+            - equals:
+                - "$.status"
+                - "ok"
+
+      # Initialize the MCP server
+      - post:
+          url: "/mcp/initialize"
+          json:
+            capabilities:
+              sampling:
+                supported: true
+              notifications:
+                supported: true
+            clientInfo:
+              name: "Load Test Client"
+              version: "1.0.0"
+          expect:
+            - statusCode: 200
+            - contentType: "application/json"
+
+      # Get available prompts
+      - post:
+          url: "/mcp/prompts"
+          json: {}
+          expect:
+            - statusCode: 200
+            - contentType: "application/json"
+
+      # Execute mathVisualization prompt
+      - post:
+          url: "/mcp/prompts/execute"
+          json:
+            promptId: "mathVisualization"
+            arguments:
+              concept: "quadratic function"
+              complexity: "intermediate"
+              format: "2d"
+          expect:
+            - statusCode: 200
+            - contentType: "application/json"
+            - hasProperty: "result"
+
