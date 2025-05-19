@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger';
 import { mcpServer } from './server';
@@ -17,6 +17,14 @@ import {
 
 // Create router
 export const mcpRouter = Router();
+
+/**
+ * Health check endpoint
+ */
+mcpRouter.get('/health', (req, res) => {
+  const status = mcpServer.getStatus();
+  res.status(200).json(status);
+});
 
 /**
  * Initialize the MCP server
@@ -166,6 +174,25 @@ mcpRouter.get('/events', (req, res) => {
   // In a real implementation, we would register this connection to receive notifications
   // and send them as SSE events
 });
+
+/**
+ * Error handler for MCP routes
+ */
+const mcpErrorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
+  logger.error('MCP error:', err);
+  
+  if (err.code && Object.values(ErrorCode).includes(err.code)) {
+    // This is a known MCP error
+    sendError(res, err);
+  } else {
+    // This is an unknown error
+    sendError(res, createError(
+      ErrorCode.INTERNAL_ERROR,
+      err.message || 'An unexpected error occurred',
+      { stack: err.stack }
+    ));
+  }
+};
 
 /**
  * Error handler for MCP routes
