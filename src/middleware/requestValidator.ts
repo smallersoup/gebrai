@@ -69,13 +69,13 @@ export function validateRequest(req: Request, res: Response, next: NextFunction)
  */
 function sanitizeObject(obj: Record<string, any>): void {
   // Ensure the object does not have a polluted prototype
-  if (obj.__proto__ !== undefined) {
+  if (Object.prototype.hasOwnProperty.call(obj, '__proto__')) {
     delete obj.__proto__;
   }
   
   // Recursively sanitize nested objects
   for (const key in obj) {
-    if (obj.hasOwnProperty(key) && typeof obj[key] === 'object' && obj[key] !== null) {
+    if (Object.prototype.hasOwnProperty.call(obj, key) && typeof obj[key] === 'object' && obj[key] !== null) {
       sanitizeObject(obj[key]);
     }
   }
