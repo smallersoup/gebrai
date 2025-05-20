@@ -93,7 +93,7 @@ function sanitizeObject(obj: Record<string, any>): void {
  * Middleware to handle malformed JSON in request body
  */
 export function handleJsonParseError(err: Error, req: Request, res: Response, next: NextFunction): void {
-  if (err instanceof SyntaxError && 'body' in err) {
+  if (err instanceof SyntaxError && err.message.includes('Unexpected token')) {
     logger.warn('Malformed JSON in request body', {
       error: err.message,
       path: req.path,
