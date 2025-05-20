@@ -285,19 +285,9 @@ export function isValidMathExpression(expression: string): boolean {
  * @returns Joi schema with bounds applied
  */
 function applyNumericBounds(schema: Joi.NumberSchema, jsonSchema: JSONSchema): Joi.NumberSchema {
-  let boundedSchema = schema;
-  
-  // Add minimum validation if specified
-  if (jsonSchema.minimum !== undefined) {
-    boundedSchema = boundedSchema.min(jsonSchema.minimum);
-  }
-  
-  // Add maximum validation if specified
-  if (jsonSchema.maximum !== undefined) {
-    boundedSchema = boundedSchema.max(jsonSchema.maximum);
-  }
-  
-  return boundedSchema;
+  return schema
+    .min(jsonSchema.minimum !== undefined ? jsonSchema.minimum : undefined)
+    .max(jsonSchema.maximum !== undefined ? jsonSchema.maximum : undefined);
 }
 
 /**
