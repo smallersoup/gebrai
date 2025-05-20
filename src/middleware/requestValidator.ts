@@ -101,8 +101,14 @@ function sanitizeObject(obj: Record<string, any>): void {
   if (Object.prototype.hasOwnProperty.call(obj, '__proto__')) {
     delete obj.__proto__;
   }
+  
   // Reset the prototype chain to prevent prototype pollution
-  Object.setPrototypeOf(obj, Object.prototype);
+  // Check if the object is an array and preserve array prototype if it is
+  if (Array.isArray(obj)) {
+    Object.setPrototypeOf(obj, Array.prototype);
+  } else {
+    Object.setPrototypeOf(obj, Object.prototype);
+  }
   
   // Recursively sanitize nested objects
   for (const key in obj) {
