@@ -6,6 +6,7 @@ import { mcpRouter } from './mcp/routes';
 import { initializeMCP } from './mcp';
 import { errorHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/requestLogger';
+import { mcpServer } from './mcp/server';
 
 // Create Express application
 const app = express();
@@ -39,6 +40,15 @@ export const startServer = async (port: number): Promise<void> => {
     const server = app.listen(port, () => {
       logger.info(`Server listening on port ${port}`);
       resolve();
+    });
+
+    // Track connections
+    server.on('connection', (socket) => {
+      mcpServer.registerConnection();
+      
+      socket.on('close', () => {
+        mcpServer.unregisterConnection();
+      });
     });
 
     // Handle graceful shutdown

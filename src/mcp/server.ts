@@ -40,6 +40,8 @@ const subscriptions: Record<string, SubscribeParams> = {};
 export class MCPServer {
   private initialized = false;
   private serverCapabilities: ServerCapabilities;
+  private connectionCount = 0;
+  private startTime: Date;
 
   constructor() {
     // Define server capabilities
@@ -57,6 +59,52 @@ export class MCPServer {
         executionNotifications: true,
       },
     };
+    
+    this.startTime = new Date();
+    logger.info('MCP Server instance created');
+  }
+
+  /**
+   * Get server status information
+   * @returns Server status information
+   */
+  getStatus(): Record<string, any> {
+    const uptime = Math.floor((new Date().getTime() - this.startTime.getTime()) / 1000);
+    
+    return {
+      status: 'ok',
+      initialized: this.initialized,
+      uptime: uptime,
+      connections: {
+        active: this.connectionCount,
+        total: this.connectionCount, // In a real implementation, we would track total connections separately
+      },
+      resources: {
+        count: resourceCache.keys().length,
+      },
+      subscriptions: {
+        count: Object.keys(subscriptions).length,
+      },
+      memory: process.memoryUsage(),
+    };
+  }
+
+  /**
+   * Register a new connection
+   */
+  registerConnection(): void {
+    this.connectionCount++;
+    logger.debug(`New connection registered. Active connections: ${this.connectionCount}`);
+  }
+
+  /**
+   * Unregister a connection
+   */
+  unregisterConnection(): void {
+    if (this.connectionCount > 0) {
+      this.connectionCount--;
+    }
+    logger.debug(`Connection unregistered. Active connections: ${this.connectionCount}`);
   }
 
   /**
