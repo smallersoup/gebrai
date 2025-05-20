@@ -5,7 +5,6 @@ import { mcpServer } from './server';
 import {
   handleRequest,
   createRequestHandler,
-  ValidationSchemas,
   sendSuccess,
   sendError,
   sendNoContent,
@@ -14,6 +13,18 @@ import {
   ErrorCode,
   createError
 } from './handlers';
+
+// Import validation schemas
+import {
+  initializeSchema,
+  executeToolSchema,
+  executePromptSchema,
+  subscribeSchema,
+  unsubscribeSchema,
+  getResourcesSchema,
+  getToolsSchema,
+  getPromptsSchema
+} from './schemas/validationSchemas';
 
 // Create router
 export const mcpRouter = Router();
@@ -49,7 +60,7 @@ mcpRouter.get('/health', (req, res) => {
 mcpRouter.post('/initialize', handleRequest(async (req, res) => {
   const result = await mcpServer.initialize(req.body);
   sendSuccess(res, result);
-}, ValidationSchemas.initialize));
+}, initializeSchema));
 
 /**
  * Shutdown the MCP server
@@ -68,7 +79,7 @@ mcpRouter.post('/resources', createRequestHandler(
     const resources = await mcpServer.getResources(req.body);
     sendSuccess(res, resources);
   },
-  ValidationSchemas.getResources
+  getResourcesSchema
 ));
 
 /**
@@ -80,7 +91,7 @@ mcpRouter.post('/resources/subscribe', createRequestHandler(
     const result = await mcpServer.subscribeToResources(req.body);
     sendSuccess(res, result);
   },
-  ValidationSchemas.subscribeToResources
+  subscribeSchema
 ));
 
 /**
@@ -92,7 +103,7 @@ mcpRouter.post('/resources/unsubscribe', createRequestHandler(
     await mcpServer.unsubscribeFromResources(req.body);
     sendNoContent(res);
   },
-  ValidationSchemas.unsubscribeFromResources
+  unsubscribeSchema
 ));
 
 /**
@@ -104,7 +115,7 @@ mcpRouter.post('/tools', createRequestHandler(
     const tools = await mcpServer.getTools(req.body);
     sendSuccess(res, tools);
   },
-  ValidationSchemas.getTools
+  getToolsSchema
 ));
 
 /**
@@ -130,7 +141,7 @@ mcpRouter.post('/tools/execute', createRequestHandler(
     
     sendSuccess(res, result);
   },
-  ValidationSchemas.executeTool
+  executeToolSchema
 ));
 
 /**
@@ -142,7 +153,7 @@ mcpRouter.post('/prompts', createRequestHandler(
     const prompts = await mcpServer.getPrompts(req.body);
     sendSuccess(res, prompts);
   },
-  ValidationSchemas.getPrompts
+  getPromptsSchema
 ));
 
 /**
@@ -154,7 +165,7 @@ mcpRouter.post('/prompts/execute', createRequestHandler(
     const result = await mcpServer.executePrompt(req.body);
     sendSuccess(res, result);
   },
-  ValidationSchemas.executePrompt
+  executePromptSchema
 ));
 
 /**

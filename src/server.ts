@@ -6,6 +6,7 @@ import { mcpRouter } from './mcp/routes';
 import { initializeMCP } from './mcp';
 import { errorHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/requestLogger';
+import { validateRequest, handleJsonParseError } from './middleware/requestValidator';
 import { mcpServer } from './mcp/server';
 
 // Create Express application
@@ -13,7 +14,27 @@ const app = express();
 
 // Apply middleware
 app.use(cors());
-app.use(bodyParser.json({ limit: '10mb' }));
+
+// Handle JSON parsing errors
+app.use(bodyParser.json({
+  limit: process.env.MAX_REQUEST_SIZE || '10mb',
+  verify: (req, res, buf) => {
+    const method = req.method.toUpperCase();
+    if (['POST', 'PUT', 'PATCH'].includes(method)) {
+      try {
+        JSON.parse(buf.toString());
+      } catch (e) {
+        const err = new SyntaxError('Invalid JSON');
+        // Attach the raw body to the error for the error handler
+        (err as any).body = buf.toString();
+        throw err;
+      }
+    }
+  }
+}));
+
+// Apply request validation and logging middleware
+app.use(validateRequest);
 app.use(requestLogger);
 
 // Apply routes
@@ -24,7 +45,8 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-// Apply error handler
+// Apply error handlers - should be after all routes and middleware
+app.use(handleJsonParseError);
 app.use(errorHandler);
 
 /**
