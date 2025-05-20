@@ -279,6 +279,18 @@ export function isValidMathExpression(expression: string): boolean {
 }
 
 /**
+ * Apply numeric bounds (min/max) to a Joi number schema based on JSON Schema
+ * @param schema Joi number schema to apply bounds to
+ * @param jsonSchema JSON Schema containing minimum and maximum properties
+ * @returns Joi schema with bounds applied
+ */
+function applyNumericBounds(schema: Joi.NumberSchema, jsonSchema: JSONSchema): Joi.NumberSchema {
+  return schema
+    .min(jsonSchema.minimum !== undefined ? jsonSchema.minimum : undefined)
+    .max(jsonSchema.maximum !== undefined ? jsonSchema.maximum : undefined);
+}
+
+/**
  * Convert a JSON Schema to a Joi schema
  * This is a simplified implementation that handles basic types
  * @param jsonSchema JSON Schema to convert
@@ -330,34 +342,10 @@ function convertJsonSchemaToJoi(jsonSchema: any): Joi.Schema {
       return stringSchema;
       
     case 'number':
-      let numberSchema = Joi.number();
-      
-      // Add minimum validation if specified
-      if (jsonSchema.minimum !== undefined) {
-        numberSchema = numberSchema.min(jsonSchema.minimum);
-      }
-      
-      // Add maximum validation if specified
-      if (jsonSchema.maximum !== undefined) {
-        numberSchema = numberSchema.max(jsonSchema.maximum);
-      }
-      
-      return numberSchema;
+      return applyNumericBounds(Joi.number(), jsonSchema);
       
     case 'integer':
-      let integerSchema = Joi.number().integer();
-      
-      // Add minimum validation if specified
-      if (jsonSchema.minimum !== undefined) {
-        integerSchema = integerSchema.min(jsonSchema.minimum);
-      }
-      
-      // Add maximum validation if specified
-      if (jsonSchema.maximum !== undefined) {
-        integerSchema = integerSchema.max(jsonSchema.maximum);
-      }
-      
-      return integerSchema;
+      return applyNumericBounds(Joi.number().integer(), jsonSchema);
       
     case 'boolean':
       return Joi.boolean();
