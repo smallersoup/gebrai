@@ -242,10 +242,17 @@ export function isValidMathExpression(expression: string): boolean {
     }
     if (parenthesesCount !== 0) return false; // Unbalanced parentheses
     
-    // Check for invalid operators sequence
+    // Check for invalid operator sequences
     // This regex accounts for valid cases like negative signs after operators
     if (/(?!^-)[+\-*/^]{2,}(?<![+\-*/^]-)/.test(expression.replace(/\s/g, ''))) {
       return false; // Multiple operators in sequence (excluding valid negative signs)
+    }
+    
+    // Additional check for invalid operator sequences
+    // This regex matches sequences of two or more operators that are not followed by a digit or opening parenthesis
+    // It catches cases that might be missed by the previous regex
+    if (/([+\-*/^]{2,})(?!\d|\()/.test(expression.replace(/\s/g, ''))) {
+      return false; // Invalid operator sequence
     }
     
     // Check for valid function calls
