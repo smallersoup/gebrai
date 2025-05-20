@@ -4,9 +4,30 @@ import { logger } from '../utils/logger';
 import { MCPError, ErrorCode } from './handlers/errorHandler';
 
 /**
+ * Array of regex patterns for potentially unsafe expressions
+ * Used for security validation across the application
+ */
+export const UNSAFE_EXPRESSION_PATTERNS = [
+  /eval\s*\(/i,
+  /setTimeout\s*\(/i,
+  /setInterval\s*\(/i,
+  /Function\s*\(/i,
+  /new\s+Function/i,
+  /require\s*\(/i,
+  /import\s*\(/i,
+  /process/i,
+  /global/i,
+  /window/i,
+  /document/i,
+  /console/i,
+  /\.__proto__/i,
+  /constructor\s*\(/i,
+];
+
+/**
  * Validate tool arguments against the tool's input schema
- * @param tool The tool to validate arguments for
- * @param args The arguments to validate
+ * @param tool Tool to validate arguments for
+ * @param args Arguments to validate
  * @returns Validation result
  */
 export function validateToolArguments(
@@ -14,18 +35,21 @@ export function validateToolArguments(
   args: any
 ): { valid: boolean; error?: string } {
   try {
-    // Convert JSON Schema to Joi schema
-    // This is a simplified implementation
-    // In a real-world scenario, you might want to use a library like json-schema-to-joi
-    const joiSchema = convertJsonSchemaToJoi(tool.inputSchema);
+    // If the tool has no input schema, skip validation
+    if (!tool.input) {
+      return { valid: true };
+    }
     
-    // Validate arguments
-    const { error } = joiSchema.validate(args, { abortEarly: false });
+    // Convert the JSON Schema to a Joi schema
+    const schema = convertJsonSchemaToJoi(tool.input);
+    
+    // Validate the arguments against the schema
+    const { error } = schema.validate(args);
     
     if (error) {
       return {
         valid: false,
-        error: error.message,
+        error: `Invalid arguments: ${error.message}`,
       };
     }
     
@@ -40,7 +64,7 @@ export function validateToolArguments(
     logger.error('Error validating tool arguments', { tool: tool.name, error });
     return {
       valid: false,
-      error: 'Internal validation error',
+      error: `Error validating arguments: ${error}`,
     };
   }
 }
@@ -182,25 +206,21 @@ export function validateSolveEquationArguments(
  * @returns True if the expression contains unsafe operations
  */
 export function containsUnsafeExpression(expression: string): boolean {
-  // Check for JavaScript code execution attempts
-  const unsafePatterns = [
-    /eval\s*\(/i,
-    /setTimeout\s*\(/i,
-    /setInterval\s*\(/i,
-    /Function\s*\(/i,
-    /new\s+Function/i,
-    /require\s*\(/i,
-    /import\s*\(/i,
-    /process/i,
-    /global/i,
-    /window/i,
-    /document/i,
-    /console/i,
-    /\.__proto__/i,
-    /constructor\s*\(/i,
-  ];
-  
-  return unsafePatterns.some(pattern => pattern.test(expression));
+  return UNSAFE_EXPRESSION_PATTERNS.some(pattern => pattern.test(expression));
+}
+
+/**
+ * Validate an expression for unsafe patterns and return a Joi validation result
+ * For use with Joi custom validators
+ * @param value The value to validate
+ * @param helpers Joi validation helpers
+ * @returns The value if valid, or a Joi error if invalid
+ */
+export function validateUnsafeExpression(value: string, helpers: any): any {
+  if (containsUnsafeExpression(value)) {
+    return helpers.error('string.unsafe', { value });
+  }
+  return value;
 }
 
 /**
@@ -254,94 +274,66 @@ export function isValidMathExpression(expression: string): boolean {
 /**
  * Convert a JSON Schema to a Joi schema
  * This is a simplified implementation that handles basic types
- * @param jsonSchema JSON Schema object
+ * @param jsonSchema JSON Schema to convert
  * @returns Joi schema
  */
 function convertJsonSchemaToJoi(jsonSchema: any): Joi.Schema {
-  // Handle null or undefined schema
-  if (!jsonSchema) {
-    return Joi.any();
-  }
-  
-  // Handle schema with properties (object)
+  // If the schema is an object with properties, create a Joi object schema
   if (jsonSchema.type === 'object' && jsonSchema.properties) {
     const schemaMap: Record<string, Joi.Schema> = {};
     
-    // Convert each property
-    Object.entries(jsonSchema.properties).forEach(([key, propSchema]) => {
-      schemaMap[key] = convertJsonSchemaToJoi(propSchema);
-    });
+    // Convert each property to a Joi schema
+    for (const [key, prop] of Object.entries<any>(jsonSchema.properties)) {
+      schemaMap[key] = convertJsonSchemaToJoi(prop);
+    }
     
     let schema = Joi.object(schemaMap);
     
-    // Handle required properties
+    // Add required validation if specified
     if (jsonSchema.required && Array.isArray(jsonSchema.required)) {
-      jsonSchema.required.forEach((requiredProp: string) => {
-        if (schemaMap[requiredProp]) {
-          schemaMap[requiredProp] = schemaMap[requiredProp].required();
-        }
-      });
-      
-      schema = Joi.object(schemaMap);
+      schema = schema.fork(jsonSchema.required, (schema) => schema.required());
     }
     
     return schema;
   }
   
-  // Handle array schema
-  if (jsonSchema.type === 'array' && jsonSchema.items) {
-    return Joi.array().items(convertJsonSchemaToJoi(jsonSchema.items));
-  }
-  
-  // Handle primitive types
+  // Handle different types
   switch (jsonSchema.type) {
     case 'string':
       let stringSchema = Joi.string();
       
-      if (jsonSchema.minLength !== undefined) {
-        stringSchema = stringSchema.min(jsonSchema.minLength);
-      }
-      
-      if (jsonSchema.maxLength !== undefined) {
-        stringSchema = stringSchema.max(jsonSchema.maxLength);
-      }
-      
+      // Add pattern validation if specified
       if (jsonSchema.pattern) {
         stringSchema = stringSchema.pattern(new RegExp(jsonSchema.pattern));
       }
       
-      if (jsonSchema.format === 'email') {
-        stringSchema = stringSchema.email();
-      }
-      
-      if (jsonSchema.format === 'uri') {
-        stringSchema = stringSchema.uri();
-      }
-      
-      if (jsonSchema.enum) {
-        stringSchema = stringSchema.valid(...jsonSchema.enum);
+      // Add format validation if specified
+      if (jsonSchema.format) {
+        switch (jsonSchema.format) {
+          case 'email':
+            stringSchema = stringSchema.email();
+            break;
+          case 'uri':
+            stringSchema = stringSchema.uri();
+            break;
+          // Add more format validations as needed
+        }
       }
       
       return stringSchema;
       
     case 'number':
     case 'integer':
-      let numberSchema = jsonSchema.type === 'integer' ? Joi.number().integer() : Joi.number();
+      let numberSchema = Joi.number();
       
+      // Add minimum validation if specified
       if (jsonSchema.minimum !== undefined) {
-        numberSchema = jsonSchema.exclusiveMinimum
-          ? numberSchema.greater(jsonSchema.minimum)
-          : numberSchema.min(jsonSchema.minimum);
+        numberSchema = numberSchema.min(jsonSchema.minimum);
       }
       
+      // Add maximum validation if specified
       if (jsonSchema.maximum !== undefined) {
-        numberSchema = jsonSchema.exclusiveMaximum
-          ? numberSchema.less(jsonSchema.maximum)
-          : numberSchema.max(jsonSchema.maximum);
-      }
-      
-      if (jsonSchema.enum) {
-        numberSchema = numberSchema.valid(...jsonSchema.enum);
+        numberSchema = numberSchema.max(jsonSchema.maximum);
       }
       
       return numberSchema;
@@ -349,8 +341,25 @@ function convertJsonSchemaToJoi(jsonSchema: any): Joi.Schema {
     case 'boolean':
       return Joi.boolean();
       
-    case 'null':
-      return Joi.valid(null);
+    case 'array':
+      let arraySchema = Joi.array();
+      
+      // Add items validation if specified
+      if (jsonSchema.items) {
+        arraySchema = arraySchema.items(convertJsonSchemaToJoi(jsonSchema.items));
+      }
+      
+      // Add minItems validation if specified
+      if (jsonSchema.minItems !== undefined) {
+        arraySchema = arraySchema.min(jsonSchema.minItems);
+      }
+      
+      // Add maxItems validation if specified
+      if (jsonSchema.maxItems !== undefined) {
+        arraySchema = arraySchema.max(jsonSchema.maxItems);
+      }
+      
+      return arraySchema;
       
     default:
       return Joi.any();
