@@ -1,7 +1,8 @@
 import request from 'supertest';
 import express from 'express';
-import { mcpRouter } from '../../src/mcp/routes';
+import { mcpRouter, mcpErrorHandler } from '../../src/mcp/routes';
 import { mcpServer } from '../../src/mcp/server';
+import { ErrorCode, createError } from '../../src/mcp/handlers';
 
 // Mock the logger
 jest.mock('../../src/utils/logger', () => ({
@@ -55,3 +56,27 @@ describe('Health Check Endpoint', () => {
   });
 });
 
+describe('MCP Error Handler', () => {
+  let app: express.Application;
+
+  beforeEach(() => {
+    app = express();
+    
+    // Create a test route that throws an error
+    app.get('/test-error', (req, res, next) => {
+      next(createError(ErrorCode.INTERNAL_ERROR, 'Test error'));
+    });
+    
+    // Apply the error handler
+    app.use(mcpErrorHandler);
+  });
+
+  it('should handle MCP errors correctly', async () => {
+    const response = await request(app).get('/test-error');
+    
+    expect(response.status).toBe(500); // Internal error status code
+    expect(response.body).toHaveProperty('error');
+    expect(response.body.error).toHaveProperty('code', ErrorCode.INTERNAL_ERROR);
+    expect(response.body.error).toHaveProperty('message', 'Test error');
+  });
+});

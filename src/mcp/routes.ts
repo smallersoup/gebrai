@@ -18,6 +18,23 @@ import {
 // Create router
 export const mcpRouter = Router();
 
+// Define MCP error handler middleware
+export const mcpErrorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
+  logger.error('MCP error:', err);
+  
+  if (err.code && Object.values(ErrorCode).includes(err.code)) {
+    // This is a known MCP error
+    sendError(res, err);
+  } else {
+    // This is an unknown error
+    sendError(res, createError(
+      ErrorCode.INTERNAL_ERROR,
+      err.message || 'An unexpected error occurred',
+      { stack: err.stack }
+    ));
+  }
+};
+
 /**
  * Health check endpoint
  */
@@ -175,26 +192,5 @@ mcpRouter.get('/events', (req, res) => {
   // and send them as SSE events
 });
 
-/**
- * Error handler for MCP routes
- */
-const mcpErrorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
-  logger.error('MCP error:', err);
-  
-  if (err.code && Object.values(ErrorCode).includes(err.code)) {
-    // This is a known MCP error
-    sendError(res, err);
-  } else {
-    // This is an unknown error
-    sendError(res, createError(
-      ErrorCode.INTERNAL_ERROR,
-      err.message || 'An unexpected error occurred',
-      { stack: err.stack }
-    ));
-  }
-};
-
-/**
- * Error handler for MCP routes
- */
+// Apply the error handler middleware to the router
 mcpRouter.use(mcpErrorHandler);
