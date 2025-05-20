@@ -19,10 +19,16 @@ app.use(cors());
 app.use(bodyParser.json({
   limit: process.env.MAX_REQUEST_SIZE || '10mb',
   verify: (req, res, buf) => {
-    try {
-      JSON.parse(buf.toString());
-    } catch (e) {
-      throw new SyntaxError('Invalid JSON');
+    const method = req.method.toUpperCase();
+    if (['POST', 'PUT', 'PATCH'].includes(method)) {
+      try {
+        JSON.parse(buf.toString());
+      } catch (e) {
+        const err = new SyntaxError('Invalid JSON');
+        // Attach the raw body to the error for the error handler
+        (err as any).body = buf.toString();
+        throw err;
+      }
     }
   }
 }));
