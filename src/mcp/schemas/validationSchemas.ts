@@ -1,5 +1,6 @@
 import Joi from 'joi';
 import { ValidationSchema } from '../handlers/types';
+import { validateUnsafeExpression } from '../validation';
 
 /**
  * Validation schema for MCP initialization request
@@ -101,31 +102,7 @@ export const getPromptsSchema: ValidationSchema = {
  */
 export const createGraph2DArgumentsSchema = Joi.object({
   expression: Joi.string().required()
-    .custom((value, helpers) => {
-      // Check for potentially dangerous expressions
-      const unsafePatterns = [
-        /eval\s*\(/i,
-        /setTimeout\s*\(/i,
-        /setInterval\s*\(/i,
-        /Function\s*\(/i,
-        /new\s+Function/i,
-        /require\s*\(/i,
-        /import\s*\(/i,
-        /process/i,
-        /global/i,
-        /window/i,
-        /document/i,
-        /console/i,
-        /\.__proto__/i,
-        /constructor\s*\(/i,
-      ];
-      
-      if (unsafePatterns.some(pattern => pattern.test(value))) {
-        return helpers.error('string.unsafe', { value });
-      }
-      
-      return value;
-    }),
+    .custom((value, helpers) => validateUnsafeExpression(value, helpers)),
   xRange: Joi.array().items(Joi.number()).min(2).max(2)
     .custom((value, helpers) => {
       const [min, max] = value;
@@ -153,29 +130,8 @@ export const createGraph2DArgumentsSchema = Joi.object({
  */
 export const solveEquationArgumentsSchema = Joi.object({
   equation: Joi.string().required()
+    .custom((value, helpers) => validateUnsafeExpression(value, helpers))
     .custom((value, helpers) => {
-      // Check for potentially dangerous expressions
-      const unsafePatterns = [
-        /eval\s*\(/i,
-        /setTimeout\s*\(/i,
-        /setInterval\s*\(/i,
-        /Function\s*\(/i,
-        /new\s+Function/i,
-        /require\s*\(/i,
-        /import\s*\(/i,
-        /process/i,
-        /global/i,
-        /window/i,
-        /document/i,
-        /console/i,
-        /\.__proto__/i,
-        /constructor\s*\(/i,
-      ];
-      
-      if (unsafePatterns.some(pattern => pattern.test(value))) {
-        return helpers.error('string.unsafe', { value });
-      }
-      
       // Validate equation format (must contain equals sign)
       if (!value.includes('=')) {
         return helpers.error('string.equation', { value });
@@ -207,4 +163,3 @@ Joi.defaults((schema) => {
     'string.variable': '{{#label}} must be present in the equation',
   });
 });
-
