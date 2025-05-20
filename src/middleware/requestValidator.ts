@@ -68,17 +68,9 @@ export function validateRequest(req: Request, res: Response, next: NextFunction)
  * @param obj Object to sanitize
  */
 function sanitizeObject(obj: Record<string, any>): void {
-  // Prevent prototype pollution
+  // Ensure the object does not have a polluted prototype
   if (obj.__proto__ !== undefined) {
     delete obj.__proto__;
-  }
-  
-  if (obj.constructor !== undefined) {
-    delete obj.constructor;
-  }
-  
-  if (obj.prototype !== undefined) {
-    delete obj.prototype;
   }
   
   // Recursively sanitize nested objects
