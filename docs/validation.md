@@ -20,7 +20,7 @@ The validation system consists of multiple layers:
 
 Located in `src/middleware/requestValidator.ts`, this middleware:
 
-- Validates request content type (must be application/json for POST requests)
+- Validates request content type (must be application/json for POST, PUT, and PATCH requests)
 - Validates request body size (configurable via MAX_REQUEST_SIZE environment variable)
 - Sanitizes request body to prevent prototype pollution
 - Handles malformed JSON in request body
@@ -88,8 +88,7 @@ The validation system is automatically applied to all incoming requests. No addi
 
 ### Environment Variables
 
-- `MAX_REQUEST_SIZE`: Maximum allowed request body size in bytes (default: 1MB)
-- `REQUEST_TIMEOUT`: Maximum allowed time for request processing in milliseconds (default: 30000)
+- `MAX_REQUEST_SIZE`: Maximum allowed request body size in bytes or human-readable format (e.g., '1MB', '500KB') (default: 1MB)
 
 ## Testing
 
@@ -98,4 +97,3 @@ Comprehensive tests are available for all validation components:
 - `tests/middleware/requestValidator.test.ts`: Tests for request validation middleware
 - `tests/mcp/validation/mathValidation.test.ts`: Tests for mathematical expression validation
 - `tests/mcp/schemas/validationSchemas.test.ts`: Tests for validation schemas
-
