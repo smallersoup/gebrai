@@ -330,7 +330,6 @@ function convertJsonSchemaToJoi(jsonSchema: any): Joi.Schema {
       return stringSchema;
       
     case 'number':
-    case 'integer':
       let numberSchema = Joi.number();
       
       // Add minimum validation if specified
@@ -344,6 +343,21 @@ function convertJsonSchemaToJoi(jsonSchema: any): Joi.Schema {
       }
       
       return numberSchema;
+      
+    case 'integer':
+      let integerSchema = Joi.number().integer();
+      
+      // Add minimum validation if specified
+      if (jsonSchema.minimum !== undefined) {
+        integerSchema = integerSchema.min(jsonSchema.minimum);
+      }
+      
+      // Add maximum validation if specified
+      if (jsonSchema.maximum !== undefined) {
+        integerSchema = integerSchema.max(jsonSchema.maximum);
+      }
+      
+      return integerSchema;
       
     case 'boolean':
       return Joi.boolean();
