@@ -88,24 +88,25 @@ describe('Request Validator Middleware', () => {
       expect(req.body.nested.__proto__).toBeUndefined();
     });
 
-    it('should handle errors gracefully', () => {
+    it('should handle general errors gracefully', () => {
+      // Simulate a general error in the middleware
       const mockError = new Error('Test error');
-      jest.spyOn(JSON, 'parse').mockImplementationOnce(() => {
+      jest.spyOn(Object, 'keys').mockImplementationOnce(() => {
         throw mockError;
       });
-
-      req.body = '{"invalid": "json"';
 
       validateRequest(req as Request, res as Response, next);
       
       expect(next).toHaveBeenCalledWith(expect.any(MCPError));
       const error = next.mock.calls[0][0] as MCPError;
       expect(error.code).toBe(ErrorCode.INTERNAL_ERROR);
+      expect(error.message).toContain('Error processing request');
     });
   });
 
   describe('handleJsonParseError', () => {
     it('should handle JSON parse errors', () => {
+      // Create a SyntaxError with a body property to simulate body-parser error
       const syntaxError = new SyntaxError('Unexpected token');
       Object.defineProperty(syntaxError, 'body', { value: '{"invalid": "json"' });
 
@@ -124,6 +125,14 @@ describe('Request Validator Middleware', () => {
       
       expect(next).toHaveBeenCalledWith(error);
     });
+
+    it('should pass through SyntaxErrors without body property', () => {
+      const syntaxError = new SyntaxError('Some syntax error');
+      // No body property added
+      
+      handleJsonParseError(syntaxError, req as Request, res as Response, next);
+      
+      expect(next).toHaveBeenCalledWith(syntaxError);
+    });
   });
 });
-
