@@ -28,7 +28,6 @@ app.use(bodyParser.json({
 }));
 
 // Apply request validation and logging middleware
-app.use(handleJsonParseError);
 app.use(validateRequest);
 app.use(requestLogger);
 
@@ -40,7 +39,8 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-// Apply error handler
+// Apply error handlers - should be after all routes and middleware
+app.use(handleJsonParseError);
 app.use(errorHandler);
 
 /**
