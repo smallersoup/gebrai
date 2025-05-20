@@ -284,7 +284,7 @@ export function isValidMathExpression(expression: string): boolean {
  * @param jsonSchema JSON Schema containing minimum and maximum properties
  * @returns Joi schema with bounds applied
  */
-function applyNumericBounds(schema: Joi.NumberSchema, jsonSchema: any): Joi.NumberSchema {
+function applyNumericBounds(schema: Joi.NumberSchema, jsonSchema: JSONSchema): Joi.NumberSchema {
   let boundedSchema = schema;
   
   // Add minimum validation if specified
