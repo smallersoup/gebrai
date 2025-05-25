@@ -1,6 +1,7 @@
 import { McpTool, ToolDefinition } from '../types/mcp';
 import { errors } from '../utils/errors';
 import logger from '../utils/logger';
+import { geogebraTools } from './geogebra-tools';
 
 /**
  * Tool Registry for managing MCP tools
@@ -144,5 +145,10 @@ const exampleTools: ToolDefinition[] = [
 
 // Register example tools
 exampleTools.forEach(tool => {
+  toolRegistry.register(tool);
+});
+
+// Register GeoGebra tools
+geogebraTools.forEach(tool => {
   toolRegistry.register(tool);
 }); 
