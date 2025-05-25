@@ -146,6 +146,72 @@ export class MockGeoGebraInstance implements GeoGebraAPI {
       return `Function ${name}(x) = ${expression} created`;
     }
 
+    // Parametric curve creation: name = Curve(x_expr, y_expr, param, start, end)
+    const parametricMatch = trimmed.match(/^([A-Za-z]\w*)\s*=\s*Curve\s*\(\s*(.+?)\s*,\s*(.+?)\s*,\s*([A-Za-z]\w*)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)$/);
+    if (parametricMatch && parametricMatch[1] && parametricMatch[2] && parametricMatch[3] && parametricMatch[4] && parametricMatch[5] && parametricMatch[6]) {
+      const [, name, xExpr, yExpr, param, tMin, tMax] = parametricMatch;
+      this.objects.set(name, {
+        name,
+        type: 'curve',
+        visible: true,
+        defined: true,
+        value: `Parametric: x(${param}) = ${xExpr}, y(${param}) = ${yExpr}, ${param} ∈ [${tMin}, ${tMax}]`,
+        color: '#00AA00'
+      });
+      return `Parametric curve ${name} created: x(${param}) = ${xExpr}, y(${param}) = ${yExpr}, ${param} ∈ [${tMin}, ${tMax}]`;
+    }
+
+    // Implicit curve creation: name = ImplicitCurve(expression)
+    const implicitMatch = trimmed.match(/^([A-Za-z]\w*)\s*=\s*ImplicitCurve\s*\(\s*(.+)\s*\)$/);
+    if (implicitMatch && implicitMatch[1] && implicitMatch[2]) {
+      const [, name, expression] = implicitMatch;
+      this.objects.set(name, {
+        name,
+        type: 'implicitcurve',
+        visible: true,
+        defined: true,
+        value: `Implicit: ${expression} = 0`,
+        color: '#AA0000'
+      });
+      return `Implicit curve ${name} created: ${expression} = 0`;
+    }
+
+    // Styling commands: SetColor, SetLineThickness, SetLineStyle
+    const setColorMatch = trimmed.match(/^SetColor\s*\(\s*([A-Za-z]\w*)\s*,\s*"([^"]+)"\s*\)$/);
+    if (setColorMatch && setColorMatch[1] && setColorMatch[2]) {
+      const [, name, color] = setColorMatch;
+      const obj = this.objects.get(name);
+      if (obj) {
+        obj.color = color;
+        return `Color of ${name} set to ${color}`;
+      }
+      return `Object ${name} not found for color setting`;
+    }
+
+    const setThicknessMatch = trimmed.match(/^SetLineThickness\s*\(\s*([A-Za-z]\w*)\s*,\s*(\d+)\s*\)$/);
+    if (setThicknessMatch && setThicknessMatch[1] && setThicknessMatch[2]) {
+      const [, name, thickness] = setThicknessMatch;
+      const obj = this.objects.get(name);
+      if (obj) {
+        // Store thickness in a custom property (mock doesn't have thickness in type)
+        (obj as any).thickness = parseInt(thickness);
+        return `Line thickness of ${name} set to ${thickness}`;
+      }
+      return `Object ${name} not found for thickness setting`;
+    }
+
+    const setStyleMatch = trimmed.match(/^SetLineStyle\s*\(\s*([A-Za-z]\w*)\s*,\s*(\d+)\s*\)$/);
+    if (setStyleMatch && setStyleMatch[1] && setStyleMatch[2]) {
+      const [, name, lineType] = setStyleMatch;
+      const obj = this.objects.get(name);
+      if (obj) {
+        const style = lineType === '10' ? 'dashed' : lineType === '20' ? 'dotted' : 'solid';
+        (obj as any).style = style;
+        return `Line style of ${name} set to ${style}`;
+      }
+      return `Object ${name} not found for style setting`;
+    }
+
     // Circle creation: Circle((x, y), r)
     const circleMatch = trimmed.match(/^Circle\s*\(\s*\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)\s*,\s*(\d+(?:\.\d+)?)\s*\)$/);
     if (circleMatch && circleMatch[1] && circleMatch[2] && circleMatch[3]) {
@@ -336,6 +402,33 @@ export class MockGeoGebraInstance implements GeoGebraAPI {
   }
 
   /**
+   * Set coordinate system bounds (mock implementation)
+   */
+  async setCoordSystem(xmin: number, xmax: number, ymin: number, ymax: number): Promise<void> {
+    this.ensureInitialized();
+    this.updateActivity();
+    logger.debug(`Mock coordinate system set on instance ${this.id}: x[${xmin}, ${xmax}], y[${ymin}, ${ymax}]`);
+  }
+
+  /**
+   * Set axes visibility (mock implementation)
+   */
+  async setAxesVisible(xAxis: boolean, yAxis: boolean): Promise<void> {
+    this.ensureInitialized();
+    this.updateActivity();
+    logger.debug(`Mock axes visibility set on instance ${this.id}: x=${xAxis}, y=${yAxis}`);
+  }
+
+  /**
+   * Set grid visibility (mock implementation)
+   */
+  async setGridVisible(visible: boolean): Promise<void> {
+    this.ensureInitialized();
+    this.updateActivity();
+    logger.debug(`Mock grid visibility set on instance ${this.id}: ${visible}`);
+  }
+
+  /**
    * Check if instance is ready
    */
   async isReady(): Promise<boolean> {
@@ -343,15 +436,15 @@ export class MockGeoGebraInstance implements GeoGebraAPI {
   }
 
   /**
-   * Export construction as PNG (base64) - Mock implementation
+   * Export construction as PNG (base64) - Mock implementation with enhanced parameters
    */
-  async exportPNG(scale: number = 1): Promise<string> {
+  async exportPNG(scale: number = 1, transparent: boolean = false, dpi: number = 72, width?: number, height?: number): Promise<string> {
     this.ensureInitialized();
     this.updateActivity();
 
     // Return a simple base64 encoded placeholder PNG
     const placeholderPNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
-    logger.debug(`Mock PNG exported from instance ${this.id} with scale ${scale}`);
+    logger.debug(`Mock PNG exported from instance ${this.id} with scale ${scale}, transparent ${transparent}, dpi ${dpi}, dimensions ${width}x${height}`);
     return placeholderPNG;
   }
 
