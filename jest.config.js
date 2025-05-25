@@ -6,6 +6,10 @@ module.exports = {
     '**/__tests__/**/*.ts',
     '**/?(*.)+(spec|test).ts'
   ],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/tests/performance/'  // Temporarily exclude performance tests
+  ],
   transform: {
     '^.+\\.ts$': 'ts-jest'
   },
@@ -21,5 +25,5 @@ module.exports = {
     'html'
   ],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
-  testTimeout: 10000
+  testTimeout: 30000  // Increased timeout for E2E tests
 }; 

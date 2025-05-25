@@ -89,6 +89,11 @@ export interface GeoGebraAPI {
   // Instance management
   isReady(): Promise<boolean>;
   cleanup(): Promise<void>;
+  
+  // Export capabilities
+  exportPNG(scale?: number): Promise<string>;
+  exportSVG(): Promise<string>;
+  exportPDF(): Promise<string>;
 }
 
 // Error types
