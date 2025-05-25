@@ -1,4 +1,4 @@
-import { ToolRegistry } from '../../src/tools';
+import { ToolRegistry, toolRegistry } from '../../src/tools';
 import { GeoGebraInstance } from '../../src/utils/geogebra-instance';
 
 // Mock GeoGebraInstance
@@ -36,7 +36,8 @@ describe('ToolRegistry', () => {
     // Mock the GeoGebraInstance constructor
     (GeoGebraInstance as jest.MockedClass<typeof GeoGebraInstance>).mockImplementation(() => mockGeoGebraInstance);
     
-    registry = new ToolRegistry();
+    // Use the global registry that has all tools registered
+    registry = toolRegistry;
   });
 
   describe('Tool Registration', () => {
@@ -47,6 +48,8 @@ describe('ToolRegistry', () => {
       expect(toolNames).toContain('geogebra_eval_command');
       expect(toolNames).toContain('geogebra_create_point');
       expect(toolNames).toContain('geogebra_create_line');
+      expect(toolNames).toContain('geogebra_create_circle');
+      expect(toolNames).toContain('geogebra_create_polygon');
       expect(toolNames).toContain('geogebra_get_objects');
       expect(toolNames).toContain('geogebra_clear_construction');
       expect(toolNames).toContain('geogebra_instance_status');

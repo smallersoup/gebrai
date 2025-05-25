@@ -32,6 +32,10 @@ export interface McpTool {
     type: 'object';
     properties: Record<string, unknown>;
     required?: string[];
+    oneOf?: Array<{
+      required: string[];
+    }>;
+    [key: string]: unknown; // Allow additional JSON Schema properties
   };
 }
 

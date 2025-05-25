@@ -86,12 +86,17 @@ export interface GeoGebraAPI {
   reset(): Promise<void>;
   refreshViews(): Promise<void>;
   
+  // View configuration
+  setCoordSystem(xmin: number, xmax: number, ymin: number, ymax: number): Promise<void>;
+  setAxesVisible(xAxis: boolean, yAxis: boolean): Promise<void>;
+  setGridVisible(visible: boolean): Promise<void>;
+  
   // Instance management
   isReady(): Promise<boolean>;
   cleanup(): Promise<void>;
   
   // Export capabilities
-  exportPNG(scale?: number): Promise<string>;
+  exportPNG(scale?: number, transparent?: boolean, dpi?: number, width?: number, height?: number): Promise<string>;
   exportSVG(): Promise<string>;
   exportPDF(): Promise<string>;
 }
