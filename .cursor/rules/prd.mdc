@@ -1,0 +1,190 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Product Requirements Document: Barcode Alarm Clock App
+
+## **Core Idea and Purpose**
+
+The Barcode Alarm Clock is a mobile application designed to solve the common problem of oversleeping by requiring users to physically get up and scan a product barcode to turn off the alarm[6][17]. Unlike traditional alarm clocks that can be easily snoozed or dismissed, this app forces users out of bed by making them interact with a physical object, such as a toothpaste tube in their bathroom, ensuring they are fully awake and mobile[19].
+
+**Primary Objectives:**
+- Help heavy sleepers and chronic oversleepers establish better morning routines
+- Eliminate the possibility of turning off alarms while still in bed
+- Create a reliable wake-up system that prevents tardiness to important commitments
+- Provide an interactive alarm experience that ensures users are alert when the alarm stops
+
+## **Target Audience and Market Analysis**
+
+**Primary Users:**
+- Heavy sleepers who struggle with traditional alarm clocks
+- Students and professionals who frequently oversleep
+- People with important morning commitments (meetings, classes, work)
+- Individuals looking to establish healthier morning routines[6]
+
+**User Personas:**
+- **College Student Sam**: Ages 18-24, lives in dorm/apartment, frequently misses morning classes due to oversleeping
+- **Professional Pat**: Ages 25-40, remote worker or office employee, needs reliable wake-up for important morning meetings
+- **Health-Conscious Helen**: Ages 30-50, wants to establish consistent morning routine for exercise or self-care
+
+## **Technical Specifications**
+
+**Platform and Framework:**
+- Built using Expo framework for React Native development[3][4]
+- Target platforms: iOS and Android
+- Minimum iOS version: 13.0
+- Minimum Android API level: 21
+
+**Barcode Scanning Technology:**
+- Implementation using `expo-camera` library (expo-barcode-scanner is deprecated as of SDK 51)[11][18]
+- Support for multiple barcode formats: QR codes, EAN, UPC, Code 39, Code 128, and others[12][13]
+- Real-time camera preview with barcode detection capabilities[18]
+
+**Required Permissions:**
+- Camera access for barcode scanning[13]
+- Microphone access for alarm functionality
+- Storage access for custom alarm sounds
+- Notification permissions for alarm alerts
+
+## **Functional Requirements**
+
+### **Core Alarm Features**
+- **Multiple Alarm Management**: Users can set multiple recurring or one-time alarms
+- **Barcode Registration**: Allow users to scan and register specific product barcodes that will turn off each alarm[6][19]
+- **Alarm Lock Feature**: Prevent users from disabling alarms once set, with no mute or snooze options[17][19]
+- **Loud Ringtones**: Provide procedurally generated, unpredictable alarm sounds to prevent auditory adaptation[6][17]
+- **Custom Sound Options**: Support for user's music library integration and ringtone playlists[6]
+
+### **Barcode Scanning Features**
+- **Quick Scan Interface**: Implement efficient barcode scanning using expo-camera's built-in capabilities[18]
+- **Multiple Barcode Support**: Allow different products to be registered for different alarms[6][19]
+- **Scan Validation**: Verify scanned barcode matches the registered barcode before turning off alarm
+- **Backup Options**: Provide alternative methods if primary barcode becomes unavailable
+
+### **User Experience Features**
+- **Bedside Clock**: Full-screen customizable clock display with multiple themes[6][19]
+- **Morning Routine Tracker**: Help users establish and track morning habits[6]
+- **Bedtime Reminders**: Optional features to encourage healthy sleep schedules[6]
+- **Dark Mode**: Support for dark theme to reduce eye strain[6][19]
+
+## **Non-Functional Requirements**
+
+### **Performance Requirements**
+- **Barcode Scanning Speed**: Achieve scan recognition within 1-2 seconds under normal lighting conditions[3][7]
+- **App Launch Time**: Application must launch within 3 seconds to ensure alarm reliability
+- **Battery Optimization**: Implement efficient battery usage, especially during overnight alarm setting
+- **Offline Functionality**: Core alarm and scanning features must work without internet connection
+
+### **Security and Privacy**
+- **Data Protection**: Store user alarm preferences and registered barcodes locally on device
+- **Camera Privacy**: Only access camera when actively scanning, with clear user permissions[8]
+- **No Data Collection**: Minimal data collection approach, focusing on device-local functionality
+
+### **Usability Requirements**
+- **Accessibility**: Support for screen readers and large text options
+- **Intuitive Interface**: Simple setup process for non-technical users
+- **Error Handling**: Clear feedback when barcodes cannot be scanned or recognized[7]
+- **Multi-language Support**: Initial support for English, with framework for additional languages
+
+## **Technical Implementation Details**
+
+### **Barcode Scanning Implementation**
+```
+- Use expo-camera with barcodeScannerEnabled prop
+- Implement CameraView component with onBarcodeScanned callback
+- Support frame processor for real-time scanning feedback
+- Include camera permission handling and error states
+```
+
+### **Data Storage**
+- Local SQLite database for alarm configurations and registered barcodes
+- Async Storage for user preferences and settings
+- Secure storage for sensitive alarm lock configurations
+
+### **Audio System**
+- Integration with device's native audio system for alarm sounds
+- Support for both built-in and custom audio files
+- Volume enforcement to prevent muting[6][17]
+
+## **Project Timeline and Milestones**
+
+### **Phase 1: Core Development (8 weeks)**
+- **Weeks 1-2**: Project setup, Expo configuration, basic UI framework
+- **Weeks 3-4**: Implement core alarm functionality and sound system
+- **Weeks 5-6**: Integrate barcode scanning using expo-camera
+- **Weeks 7-8**: Connect alarm dismissal with barcode validation
+
+### **Phase 2: Enhanced Features (6 weeks)**
+- **Weeks 9-10**: Implement multiple alarm management and barcode registration
+- **Weeks 11-12**: Add bedside clock and customization features
+- **Weeks 13-14**: Integrate morning routine tracking and bedtime features
+
+### **Phase 3: Testing and Polish (4 weeks)**
+- **Weeks 15-16**: Comprehensive testing on various devices and lighting conditions
+- **Weeks 17-18**: UI/UX refinements, performance optimization, and app store preparation
+
+## **Success Metrics and Release Criteria**
+
+### **Technical Metrics**
+- Barcode scanning success rate: >95% under normal lighting conditions
+- App crash rate: 80% of downloads complete initial alarm setup
+- Feature adoption: >60% of users register multiple barcodes within first week
+- User retention: >40% active usage after 30 days
+
+### **Release Criteria**
+- All core functionality (alarm setting, barcode scanning, alarm dismissal) working reliably
+- Successful testing on minimum 10 different device models
+- App store compliance for both iOS and Android platforms
+- Performance benchmarks met for scanning speed and battery usage
+
+## **Communication and Development Approach**
+
+### **Stakeholder Roles**
+- **Product Owner**: Final approval on feature specifications and user experience decisions
+- **Development Team**: Responsible for technical implementation and testing
+- **UX/UI Designer**: Interface design and user flow optimization
+- **QA Tester**: Device testing and edge case validation
+
+### **Communication Schedule**
+- Weekly progress reviews every Monday
+- Bi-weekly stakeholder demos starting in Week 3
+- Daily standups for development team during active development phases
+- Final review and approval sessions before each phase completion
+
+The success of this barcode alarm clock app relies heavily on the reliability of both the alarm system and barcode scanning functionality, as users depend on it for critical wake-up needs[6][17]. The technical implementation using Expo provides a solid foundation for cross-platform development while leveraging native camera capabilities for efficient barcode scanning[3][18].
+
+Citations:
+[1] https://whimsygames.co/blog/mobile-app-requirements-document-all-you-should-know/
+[2] https://www.perforce.com/blog/alm/how-write-product-requirements-document-prd
+[3] https://scanbot.io/techblog/react-native-scanner-tutorial/
+[4] https://explainlikeiamfive.hashnode.dev/expo-barcodescanner
+[5] https://www.reddit.com/r/reactnative/comments/1al1r4y/barcode_scanning_library/
+[6] https://apps.apple.com/us/app/barcode-alarm-clock/id699437630
+[7] https://www.scandit.com/blog/scanning-at-scale-ux-insights/
+[8] https://id-integration.com/barcode-security-threat/
+[9] https://madappgang.com/blog/mobile-app-prd-guidelines/
+[10] https://www.figma.com/resource-library/product-requirements-document/
+[11] https://github.com/expo/expo/issues/27015
+[12] https://www.youtube.com/watch?v=cf1JSADClaQ
+[13] https://www.npmjs.com/package/expo-barcode-scanner
+[14] https://www.reddit.com/r/productivity/comments/fssnsn/using_a_barcode_alarm_to_force_yourself_to/
+[15] https://www.scandit.com/resources/guides/barcode-scanning-challenges/
+[16] https://www.dynamsoft.com/codepool/expo-barcode-scanner.html
+[17] https://apps.apple.com/de/app/barcode-alarm-clock/id699437630?l=en-GB
+[18] https://www.linkedin.com/posts/simongr_tip-expo-can-scan-barcodes-you-dont-activity-7258494054240342016-SN7l
+[19] https://tooltaps.com/app/barcode-alarm-clock/
+[20] https://themindstudios.com/pdf/MS-app-requirements-brief.pdf
+[21] https://clearbridgemobile.com/how-to-build-a-mobile-app-requirements-document/
+[22] https://uxcam.com/blog/product-management-templates/
+[23] https://www.scribd.com/document/494756297/The-Mobile-App-Product-Requirements-Template
+[24] https://docs.expo.dev/versions/latest/sdk/camera/
+[25] https://dev.to/vtechguys/expo-barcode-scanner-7i0
+[26] https://play.google.com/store/apps/details?id=com.sweak.qralarm
+[27] https://play.google.com/store/apps/details?id=com.sweak.qralarm.pro
+[28] https://alert.micromedia-int.com/en/page/38-specifications
+[29] https://answers.alarm.com/Customer/Website_and_App/User_Management/Web_App_Users/Alarm.com_app_Device_compatibility
+[30] http://www.onlinetoolcenter.com/blog/Do-Barcodes-Set-Off-Alarms-Understanding-the-Role-of-EAS-Systems.html
+
+---
+Answer from Perplexity: pplx.ai/share
