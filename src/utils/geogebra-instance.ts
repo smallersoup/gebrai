@@ -15,6 +15,14 @@ import { v4 as uuidv4 } from 'uuid';
 /**
  * GeoGebra Instance - Manages a single GeoGebra instance via Puppeteer
  */
+/**
+ * Escapes a string for safe use in JavaScript code.
+ * Replaces backslashes and single quotes with their escaped equivalents.
+ */
+function escapeForJavaScript(input: string): string {
+  return input.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
 export class GeoGebraInstance implements GeoGebraAPI {
   private browser?: Browser | undefined;
   private page?: Page | undefined;
@@ -252,7 +260,7 @@ export class GeoGebraInstance implements GeoGebraAPI {
     this.updateActivity();
 
     try {
-      await this.page!.evaluate(`window.ggbApplet.deleteObject('${objName.replace(/'/g, "\\'")}');`);
+      await this.page!.evaluate(`window.ggbApplet.deleteObject('${escapeForJavaScript(objName)}');`);
       return true;
     } catch (error) {
       logger.error(`Failed to delete object ${objName} on instance ${this.id}`, error);
