@@ -343,6 +343,56 @@ export class MockGeoGebraInstance implements GeoGebraAPI {
   }
 
   /**
+   * Export construction as PNG (base64) - Mock implementation
+   */
+  async exportPNG(scale: number = 1): Promise<string> {
+    this.ensureInitialized();
+    this.updateActivity();
+
+    // Return a simple base64 encoded placeholder PNG
+    const placeholderPNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    logger.debug(`Mock PNG exported from instance ${this.id} with scale ${scale}`);
+    return placeholderPNG;
+  }
+
+  /**
+   * Export construction as SVG - Mock implementation
+   */
+  async exportSVG(): Promise<string> {
+    this.ensureInitialized();
+    this.updateActivity();
+
+    // Return a simple SVG with mock construction
+    const mockSVG = `<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <rect width="800" height="600" fill="white"/>
+  <text x="400" y="300" text-anchor="middle" font-family="Arial" font-size="20">Mock GeoGebra Construction</text>
+  ${Array.from(this.objects.values()).map(obj => {
+    if (obj.type === 'point') {
+      return `<circle cx="${(obj.x || 0) * 50 + 400}" cy="${(obj.y || 0) * -50 + 300}" r="3" fill="${obj.color || '#0000FF'}"/>`;
+    }
+    return '';
+  }).join('\n  ')}
+</svg>`;
+    
+    logger.debug(`Mock SVG exported from instance ${this.id}`);
+    return mockSVG.trim();
+  }
+
+  /**
+   * Export construction as PDF (base64) - Mock implementation
+   */
+  async exportPDF(): Promise<string> {
+    this.ensureInitialized();
+    this.updateActivity();
+
+    // Return a simple base64 encoded placeholder PDF
+    const placeholderPDF = 'JVBERi0xLjQKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIKPj4KZW5kb2JqCjIgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9LaWRzIFszIDAgUl0KL0NvdW50IDEKPD4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovTWVkaWFCb3ggWzAgMCA2MTIgNzkyXQovQ29udGVudHMgNCAwIFIKPj4KZW5kb2JqCjQgMCBvYmoKPDwKL0xlbmd0aCA0NAo+PgpzdHJlYW0KQlQKL0YxIDEyIFRmCjEwMCAzMDAgVGQKKE1vY2sgR2VvR2VicmEgUERGKSBUagpFVApxbnN0cmVhbQplbmRvYmoKNSAwIG9iago8PAovVHlwZSAvRm9udAovU3VidHlwZSAvVHlwZTEKL0Jhc2VGb250IC9IZWx2ZXRpY2EKPj4KZW5kb2JqCnhyZWYKMCA2CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAwOSAwMDAwMCBuIAowMDAwMDAwMDU4IDAwMDAwIG4gCjAwMDAwMDAxMTUgMDAwMDAgbiAKMDAwMDAwMDIwNiAwMDAwMCBuIAowMDAwMDAwMzAxIDAwMDAwIG4gCnRyYWlsZXIKPDwKL1NpemUgNgovUm9vdCAxIDAgUgo+PgpzdGFydHhyZWYKMzk5CiUlRU9G';
+    
+    logger.debug(`Mock PDF exported from instance ${this.id}`);
+    return placeholderPDF;
+  }
+
+  /**
    * Cleanup resources
    */
   async cleanup(): Promise<void> {

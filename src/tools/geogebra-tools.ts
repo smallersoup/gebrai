@@ -1,11 +1,12 @@
 import { ToolDefinition } from '../types/mcp';
 import { MockGeoGebraInstance } from '../utils/geogebra-mock';
+// import { GeoGebraInstance } from '../utils/geogebra-instance'; // Real implementation (requires browser)
 import logger from '../utils/logger';
 
 // Global instance pool for managing GeoGebra instances
 class GeoGebraInstancePool {
   private instances: Map<string, MockGeoGebraInstance> = new Map();
-  private defaultInstance?: MockGeoGebraInstance;
+  private defaultInstance: MockGeoGebraInstance | undefined;
 
   async getDefaultInstance(): Promise<MockGeoGebraInstance> {
     if (!this.defaultInstance) {
@@ -22,7 +23,7 @@ class GeoGebraInstancePool {
         await this.defaultInstance.initialize();
         logger.info('Default Mock GeoGebra instance initialized');
       } catch (error) {
-        logger.error('Failed to initialize default Mock GeoGebra instance', error);
+        logger.error('Failed to initialize default GeoGebra instance', error);
         throw error;
       }
     }
@@ -33,7 +34,7 @@ class GeoGebraInstancePool {
   async cleanup(): Promise<void> {
     if (this.defaultInstance) {
       await this.defaultInstance.cleanup();
-      this.defaultInstance = undefined as any;
+      this.defaultInstance = undefined;
     }
     
     for (const instance of this.instances.values()) {
@@ -366,6 +367,144 @@ export const geogebraTools: ToolDefinition[] = [
         };
       } catch (error) {
         logger.error('Failed to get instance status', error);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: false,
+              error: error instanceof Error ? error.message : String(error)
+            }, null, 2)
+          }],
+          isError: true
+        };
+      }
+    }
+  },
+
+  {
+    tool: {
+      name: 'geogebra_export_png',
+      description: 'Export the current GeoGebra construction as PNG (base64)',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          scale: {
+            type: 'number',
+            description: 'Scale factor for the exported image (default: 1)',
+            minimum: 0.1,
+            maximum: 5
+          }
+        },
+        required: []
+      }
+    },
+    handler: async (params) => {
+      try {
+        const scale = (params['scale'] as number) || 1;
+        const instance = await instancePool.getDefaultInstance();
+        
+        const pngBase64 = await instance.exportPNG(scale);
+        
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: true,
+              format: 'PNG',
+              scale,
+              data: pngBase64,
+              encoding: 'base64'
+            }, null, 2)
+          }]
+        };
+      } catch (error) {
+        logger.error('Failed to export PNG', error);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: false,
+              error: error instanceof Error ? error.message : String(error)
+            }, null, 2)
+          }],
+          isError: true
+        };
+      }
+    }
+  },
+
+  {
+    tool: {
+      name: 'geogebra_export_svg',
+      description: 'Export the current GeoGebra construction as SVG',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+        required: []
+      }
+    },
+    handler: async (_params) => {
+      try {
+        const instance = await instancePool.getDefaultInstance();
+        
+        const svg = await instance.exportSVG();
+        
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: true,
+              format: 'SVG',
+              data: svg,
+              encoding: 'utf8'
+            }, null, 2)
+          }]
+        };
+      } catch (error) {
+        logger.error('Failed to export SVG', error);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: false,
+              error: error instanceof Error ? error.message : String(error)
+            }, null, 2)
+          }],
+          isError: true
+        };
+      }
+    }
+  },
+
+  {
+    tool: {
+      name: 'geogebra_export_pdf',
+      description: 'Export the current GeoGebra construction as PDF (base64)',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+        required: []
+      }
+    },
+    handler: async (_params) => {
+      try {
+        const instance = await instancePool.getDefaultInstance();
+        
+        const pdfBase64 = await instance.exportPDF();
+        
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: true,
+              format: 'PDF',
+              data: pdfBase64,
+              encoding: 'base64'
+            }, null, 2)
+          }]
+        };
+      } catch (error) {
+        logger.error('Failed to export PDF', error);
         return {
           content: [{
             type: 'text' as const,
