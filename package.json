@@ -1,6 +1,6 @@
 {
   "name": "@gebrai/gebrai",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Model Context Protocol server for GeoGebra mathematical visualization",
   "main": "dist/index.js",
   "private": false,
@@ -53,19 +53,19 @@
     "url": "https://github.com/gebrai/gebrai/issues"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com/",
-    "access": "restricted"
+    "access": "public"
   },
   "dependencies": {
-    "winston": "^3.11.0",
+    "@gebrai/gebrai": "^1.0.1",
     "dotenv": "^16.3.1",
+    "puppeteer": "^22.8.2",
     "uuid": "^9.0.1",
-    "puppeteer": "^22.8.2"
+    "winston": "^3.11.0"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.8",
     "@types/node": "^20.10.0",
     "@types/uuid": "^9.0.7",
-    "@types/jest": "^29.5.8",
     "@typescript-eslint/eslint-plugin": "^6.12.0",
     "@typescript-eslint/parser": "^6.12.0",
     "eslint": "^8.54.0",
@@ -78,4 +78,4 @@
   "engines": {
     "node": ">=18.0.0"
   }
-} 
+}

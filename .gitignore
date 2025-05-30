@@ -104,3 +104,6 @@ Thumbs.db /.env.example
 /.eslintrc.js
 /.eslintrc.json
 /src/utils/geogebra-service.ts
+
+# npm configuration with tokens
+.npmrc
