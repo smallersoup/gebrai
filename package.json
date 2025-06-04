@@ -1,6 +1,6 @@
 {
   "name": "@gebrai/gebrai",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Model Context Protocol server for GeoGebra mathematical visualization",
   "main": "dist/index.js",
   "private": false,
