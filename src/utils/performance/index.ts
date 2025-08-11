@@ -166,7 +166,10 @@ export class PerformanceMonitor {
     return {
       count: relevantMetrics.length,
       averageDuration: durations.reduce((sum, d) => sum + d, 0) / durations.length,
-      medianDuration: durations[Math.floor(durations.length / 2)] || 0,
+      medianDuration:
+        durations.length % 2 === 0
+          ? ((durations[durations.length / 2 - 1] ?? 0) + (durations[durations.length / 2] ?? 0)) / 2
+          : durations[Math.floor(durations.length / 2)] ?? 0,
       minDuration: durations[0] || 0,
       maxDuration: durations[durations.length - 1] || 0,
       successRate: successCount / relevantMetrics.length,
