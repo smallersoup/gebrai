@@ -57,8 +57,8 @@ export class GeoGebraInstance implements GeoGebraAPI {
     try {
       logger.info(`Initializing GeoGebra instance ${this.id}`, { headless });
       
-      // Launch browser
-      this.browser = await puppeteer.launch({
+      // Launch browser with configurable Chrome path
+      const launchOptions: any = {
         headless,
         args: [
           '--no-sandbox',
@@ -70,7 +70,23 @@ export class GeoGebraInstance implements GeoGebraAPI {
           '--disable-gpu',
           ...browserArgs
         ]
-      });
+      };
+
+      // Check for Chrome executable path from environment variable
+      const chromeExecutablePath = process.env.CHROME_EXECUTABLE_PATH;
+      if (chromeExecutablePath) {
+        const fs = require('fs');
+        if (fs.existsSync(chromeExecutablePath)) {
+          launchOptions.executablePath = chromeExecutablePath;
+          logger.info(`Using Chrome from CHROME_EXECUTABLE_PATH: ${chromeExecutablePath}`);
+        } else {
+          logger.warn(`Chrome executable not found at CHROME_EXECUTABLE_PATH: ${chromeExecutablePath}`);
+        }
+      } else {
+        logger.info('No CHROME_EXECUTABLE_PATH specified, using default puppeteer behavior');
+      }
+
+      this.browser = await puppeteer.launch(launchOptions);
 
       // Create new page
       this.page = await this.browser.newPage();

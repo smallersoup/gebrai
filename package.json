@@ -58,7 +58,7 @@
   "dependencies": {
     "@gebrai/gebrai": "^1.0.1",
     "dotenv": "^16.3.1",
-    "puppeteer": "^22.8.2",
+    "puppeteer": "^22.15.0",
     "uuid": "^9.0.1",
     "winston": "^3.11.0"
   },
