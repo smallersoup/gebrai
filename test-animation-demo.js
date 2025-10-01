@@ -1,3 +1,4 @@
+require('dotenv/config');
 const { toolRegistry } = require('./dist/tools/index.js');
 
 async function testAnimationDemo() {

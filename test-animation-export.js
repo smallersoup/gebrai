@@ -1,3 +1,4 @@
+require('dotenv/config');
 const { toolRegistry } = require('./dist/tools/index.js');
 const fs = require('fs');
 const path = require('path');
