@@ -27,7 +27,7 @@ export class OptimizedInstancePool {
   private cleanupInterval?: NodeJS.Timeout | undefined;
 
   private defaultConfig: GeoGebraPoolConfig = {
-    maxInstances: 3,        // Maximum concurrent instances
+    maxInstances: 5,        // Maximum concurrent instances (increased for better performance)
     instanceTimeout: 300000, // 5 minutes
     maxIdleTime: 600000,    // 10 minutes
     headless: true,
@@ -110,12 +110,9 @@ export class OptimizedInstancePool {
         pooled.isActive = false;
         pooled.lastUsed = new Date();
         
-        // Clear construction to reset state for next use
-        try {
-          await instance.newConstruction();
-        } catch (error) {
-          logger.warn(`Failed to clear construction on release: ${error}`);
-        }
+        // Don't clear construction to preserve created objects
+        // This allows variables to persist across commands
+        // Only clear construction when explicitly requested or on instance cleanup
 
         logger.debug(`Instance ${instance.id} released to pool`, {
           totalInstances: this.instances.size,

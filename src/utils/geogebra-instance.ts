@@ -170,49 +170,10 @@ export class GeoGebraInstance implements GeoGebraAPI {
                     api.enableCAS(true);
                 }
                 
-                // Load all required modules with retries
-                var loadAttempts = 0;
-                var maxAttempts = 10;
-                
-                function checkModulesLoaded() {
-                    loadAttempts++;
-                    
-                    // Test CAS availability
-                    var casReady = false;
-                    try {
-                        api.evalCommand('1+1');
-                        casReady = true;
-                    } catch (e) {
-                        casReady = false;
-                    }
-                    
-                    // Test scripting availability  
-                    var scriptingReady = false;
-                    try {
-                        // Try a simple scripting command
-                        var result = api.evalCommand('test_slider = Slider(0, 1)');
-                        if (result) {
-                            api.deleteObject('test_slider');
-                            scriptingReady = true;
-                        }
-                    } catch (e) {
-                        scriptingReady = false;
-                    }
-                    
-                    if (casReady && scriptingReady) {
-                        window.ggbReady = true;
-                        console.log('GeoGebra applet loaded with all modules ready');
-                    } else if (loadAttempts < maxAttempts) {
-                        setTimeout(checkModulesLoaded, 500);
-                    } else {
-                        // Fallback - mark as ready even if modules aren't fully loaded
-                        window.ggbReady = true;
-                        console.log('GeoGebra applet loaded with basic functionality (modules may still be loading)');
-                    }
-                }
-                
-                // Start checking after initial delay
-                setTimeout(checkModulesLoaded, 1000);
+                // Simplified initialization - just mark as ready
+                // The complex module checking was causing performance issues
+                window.ggbReady = true;
+                console.log('GeoGebra applet loaded and ready');
             }
         };
 
@@ -220,13 +181,13 @@ export class GeoGebraInstance implements GeoGebraAPI {
         const applet = new GGBApplet(parameters, true);
         applet.inject('ggb-element');
         
-        // Fallback timeout to set ready state
+        // Reduced fallback timeout for faster initialization
         setTimeout(function() {
             if (!window.ggbReady && window.ggbApplet) {
                 window.ggbReady = true;
                 console.log('GeoGebra initialized via fallback timeout');
             }
-        }, 5000);
+        }, 2000);
     </script>
 </body>
 </html>`;
@@ -235,7 +196,7 @@ export class GeoGebraInstance implements GeoGebraAPI {
   /**
    * Wait for GeoGebra to be ready
    */
-  private async waitForReady(timeout: number = 30000): Promise<void> {
+  private async waitForReady(timeout: number = 10000): Promise<void> {
     if (!this.page) {
       throw new GeoGebraConnectionError('Page not initialized');
     }
@@ -307,13 +268,89 @@ export class GeoGebraInstance implements GeoGebraAPI {
       const result = await this.page!.evaluate((cmd) => {
         try {
           const success = (window as any).ggbApplet.evalCommand(cmd);
+          
+          // For commands that should return values (like object names), try to get the result
+          let result = undefined;
+          if (success && cmd.trim() && !cmd.includes('=') && !cmd.includes('(')) {
+            // This looks like a simple object reference (e.g., "A", "P", "slider")
+            try {
+              const applet = (window as any).ggbApplet;
+              
+              // Try different methods to get the object value
+              try {
+                // First try getValue for general objects
+                if (applet.getValue) {
+                  result = applet.getValue(cmd);
+                }
+              } catch (e) {
+                // getValue failed, try other methods
+              }
+              
+              // If getValue didn't work, try point-specific methods
+              if (result === undefined || result === null) {
+                try {
+                  if (applet.getX && applet.getY) {
+                    const x = applet.getX(cmd);
+                    const y = applet.getY(cmd);
+                    if (x !== undefined && y !== undefined && !isNaN(x) && !isNaN(y)) {
+                      result = `(${x}, ${y})`;
+                    }
+                  }
+                } catch (e) {
+                  // Not a point or getX/getY failed
+                }
+              }
+              
+              // If still no result, try to get the object type and handle accordingly
+              if (result === undefined || result === null) {
+                try {
+                  const objType = applet.getObjectType(cmd);
+                  if (objType === 'point') {
+                    // For points, try alternative methods
+                    if (applet.getX && applet.getY) {
+                      const x = applet.getX(cmd);
+                      const y = applet.getY(cmd);
+                      if (x !== undefined && y !== undefined && !isNaN(x) && !isNaN(y)) {
+                        result = `(${x}, ${y})`;
+                      }
+                    }
+                  } else if (objType === 'slider') {
+                    // For sliders, try getValue again
+                    if (applet.getValue) {
+                      result = applet.getValue(cmd);
+                    }
+                  }
+                } catch (e) {
+                  // Ignore errors
+                }
+              }
+              
+              // If still no result, try to evaluate the command as an expression
+              if (result === undefined) {
+                try {
+                  // Try to get the value using evalCommand with a different approach
+                  const value = applet.evalCommand(cmd);
+                  if (typeof value === 'number' || typeof value === 'string') {
+                    result = value;
+                  }
+                } catch (e) {
+                  // Ignore errors
+                }
+              }
+            } catch (e) {
+              // Ignore errors in getting the value
+            }
+          }
+          
           return {
             success: success,
+            result: result,
             error: success ? undefined : 'Command execution failed'
           };
         } catch (error) {
           return {
             success: false,
+            result: undefined,
             error: error.message || 'Unknown error'
           };
         }
@@ -868,60 +905,93 @@ export class GeoGebraInstance implements GeoGebraAPI {
 
     return this.retryOperation(async () => {
       const svg = await this.page!.evaluate(() => {
-        try {
-          // GEB-17: Enhanced applet availability check
-          const applet = (window as any).ggbApplet;
-          if (!applet) {
-            throw new Error('GeoGebra applet not available');
-          }
-          
-          let result = null;
-          let lastError = null;
-          
-          // Try exportSVG method first
-          if (typeof applet.exportSVG === 'function') {
-            try {
-              result = applet.exportSVG();
-              if (result && typeof result === 'string' && result.includes('<svg')) {
-                return result; // Success with exportSVG
-              }
-            } catch (e1) {
-              lastError = e1;
+        return new Promise((resolve, reject) => {
+          try {
+            // GEB-17: Enhanced applet availability check
+            const applet = (window as any).ggbApplet;
+            if (!applet) {
+              reject(new Error('GeoGebra applet not available'));
+              return;
             }
             
-            // Try with filename parameter
-            try {
-              result = applet.exportSVG('construction');
-              if (result && typeof result === 'string' && result.includes('<svg')) {
-                return result; // Success with filename parameter
+            let result = null;
+            let lastError = null;
+            const attemptedMethods: string[] = [];
+            
+            // Try exportSVG with callback (async)
+            if (typeof applet.exportSVG === 'function') {
+              attemptedMethods.push('exportSVG(callback)');
+              try {
+                let callbackCalled = false;
+                applet.exportSVG((svgData: string) => {
+                  callbackCalled = true;
+                  if (svgData && typeof svgData === 'string' && svgData.includes('<svg')) {
+                    resolve(svgData);
+                  }
+                });
+                
+                // Wait a bit for callback
+                setTimeout(() => {
+                  if (!callbackCalled) {
+                    // Callback wasn't called, try sync method
+                    attemptedMethods.push('exportSVG()');
+                    try {
+                      result = applet.exportSVG();
+                      if (result && typeof result === 'string' && result.includes('<svg')) {
+                        resolve(result);
+                        return;
+                      }
+                    } catch (e1: any) {
+                      lastError = e1;
+                    }
+                    
+                    // Try with filename parameter
+                    attemptedMethods.push('exportSVG(filename)');
+                    try {
+                      result = applet.exportSVG('construction');
+                      if (result && typeof result === 'string' && result.includes('<svg')) {
+                        resolve(result);
+                        return;
+                      }
+                    } catch (e2: any) {
+                      lastError = e2;
+                    }
+                    
+                    // Try getSVG method as alternative
+                    if (typeof applet.getSVG === 'function') {
+                      attemptedMethods.push('getSVG()');
+                      try {
+                        result = applet.getSVG();
+                        if (result && typeof result === 'string' && result.includes('<svg')) {
+                          resolve(result);
+                          return;
+                        }
+                      } catch (e3: any) {
+                        lastError = e3;
+                      }
+                    }
+                    
+                    // All methods failed
+                    const availableMethods = [];
+                    if (typeof applet.exportSVG === 'function') availableMethods.push('exportSVG');
+                    if (typeof applet.getSVG === 'function') availableMethods.push('getSVG');
+                    
+                    reject(new Error(`All SVG export methods failed. Available methods: ${availableMethods.join(', ')}. Attempted: ${attemptedMethods.join(', ')}. Last error: ${lastError ? lastError.message : 'Unknown error'}. Result was: ${typeof result} ${result ? 'not null/undefined' : 'null/undefined'}`));
+                  }
+                }, 500);
+                
+              } catch (e0: any) {
+                lastError = e0;
+                // Continue to other methods
               }
-            } catch (e2) {
-              lastError = e2;
+            } else {
+              reject(new Error('exportSVG method not available on GeoGebra applet'));
             }
+            
+          } catch (error: any) {
+            reject(new Error(`SVG export failed: ${error.message || error}`));
           }
-          
-          // Try getSVG method as alternative
-          if (typeof applet.getSVG === 'function') {
-            try {
-              result = applet.getSVG();
-              if (result && typeof result === 'string' && result.includes('<svg')) {
-                return result; // Success with getSVG
-              }
-            } catch (e3) {
-              lastError = e3;
-            }
-          }
-          
-          // GEB-17: NO MORE PLACEHOLDER RESPONSES - throw error instead
-          const availableMethods = [];
-          if (typeof applet.exportSVG === 'function') availableMethods.push('exportSVG');
-          if (typeof applet.getSVG === 'function') availableMethods.push('getSVG');
-          
-          throw new Error(`All SVG export methods failed. Available methods: ${availableMethods.join(', ')}. Last error: ${lastError ? lastError.message : 'Unknown error'}. Result was: ${typeof result} ${result ? (result.includes ? (result.includes('<svg') ? 'contains <svg>' : 'missing <svg>') : 'not string-like') : 'null/undefined'}`);
-          
-        } catch (error) {
-          throw new Error(`SVG export failed: ${error.message || error}`);
-        }
+        });
       });
 
       // GEB-17: Enhanced validation - no placeholder acceptance
@@ -1116,21 +1186,134 @@ export class GeoGebraInstance implements GeoGebraAPI {
       logger.debug(`Starting animation capture for instance ${this.id}: ${totalFrames} frames over ${duration}ms`);
 
       try {
-        // Start animation
-        await this.page!.evaluate(() => {
-          (window as any).ggbApplet.startAnimation();
+        // Check if there are any animatable objects and start their animation
+        const animatableObjects = await this.page!.evaluate(() => {
+          const applet = (window as any).ggbApplet;
+          if (!applet) return [];
+          
+          const allObjects = applet.getAllObjectNames();
+          const animatable = [];
+          
+          for (const objName of allObjects) {
+            try {
+              const objType = applet.getObjectType(objName);
+              // Check if object can be animated (sliders, points on paths, etc.)
+              if (objType === 'slider') {
+                // For sliders, we need to manually start animation
+                try {
+                  // Use the correct GeoGebra API methods
+                  applet.setAnimating(objName, true);
+                  applet.setAnimationSpeed(objName, 1);
+                  applet.startAnimation();
+                  animatable.push({ name: objName, type: objType, animated: true });
+                } catch (e) {
+                  // Try alternative method
+                  try {
+                    applet.evalCommand(`SetAnimating(${objName}, true)`);
+                    applet.evalCommand(`SetAnimationSpeed(${objName}, 1)`);
+                    applet.evalCommand('StartAnimation()');
+                    animatable.push({ name: objName, type: objType, animated: true });
+                  } catch (e2) {
+                    animatable.push({ name: objName, type: objType, animated: false });
+                  }
+                }
+              } else if (objType === 'point') {
+                // Check if point is on a path or has animation properties
+                try {
+                  const isOnPath = applet.isOnPath(objName);
+                  if (isOnPath) {
+                    animatable.push({ name: objName, type: objType, onPath: true });
+                  }
+                } catch (e) {
+                  // Ignore errors
+                }
+              }
+            } catch (e) {
+              // Ignore errors for individual objects
+            }
+          }
+          
+          return animatable;
         });
+        
+        logger.debug(`Found ${animatableObjects.length} animatable objects:`, animatableObjects);
 
-        // Capture frames
+        // Start global animation if we have animatable objects
+        if (animatableObjects.length > 0) {
+          // Try multiple methods to start animation
+          await this.page!.evaluate(() => {
+            const applet = (window as any).ggbApplet;
+            try {
+              // Method 1: Direct API call
+              applet.startAnimation();
+            } catch (e) {
+              try {
+                // Method 2: Command evaluation
+                applet.evalCommand('StartAnimation()');
+              } catch (e2) {
+                try {
+                  // Method 3: Manual animation loop
+                  const slider = applet.getAllObjectNames().find(name => applet.getObjectType(name) === 'slider');
+                  if (slider) {
+                    applet.setAnimating(slider, true);
+                    applet.setAnimationSpeed(slider, 1);
+                  }
+                } catch (e3) {
+                  console.warn('All animation start methods failed');
+                }
+              }
+            }
+          });
+          
+          // Wait longer for animation to start properly
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } else {
+          logger.warn('No animatable objects found, animation may not work properly');
+        }
+
+        // Capture frames with manual animation control
+        // Try common slider names: slider, a, b, t, s
+        const commonSliderNames = ['slider', 'a', 'b', 't', 's', 'n', 'm'];
+        
         for (let i = 0; i < totalFrames; i++) {
-          // Wait for frame interval
-          await new Promise(resolve => setTimeout(resolve, frameInterval));
+          // Calculate the value for this frame
+          const progress = i / (totalFrames - 1);
+          const value = 2 * Math.PI * progress; // 0 to 2π
+          
+          // Try to set slider value using command evaluation
+          const setResult = await this.page!.evaluate((sliderNames, value) => {
+            const applet = (window as any).ggbApplet;
+            let success = false;
+            
+            // Try each common slider name
+            for (const sliderName of sliderNames) {
+              try {
+                // Use command syntax to set slider value
+                const result = applet.evalCommand(`${sliderName} = ${value}`);
+                if (result) {
+                  success = true;
+                  return { success: true, sliderName, value };
+                }
+              } catch (e) {
+                // Continue to next slider name
+              }
+            }
+            
+            return { success: false, message: 'No slider found' };
+          }, commonSliderNames, value);
+          
+          if (i === 0) {
+            logger.debug(`Slider control result for frame 0: ${JSON.stringify(setResult)}`);
+          }
+          
+          // Wait for the change to take effect and for rendering
+          await new Promise(resolve => setTimeout(resolve, 100));
           
           // Capture frame as PNG
           try {
             const frameData = await this.exportPNG(1, false, 72, width, height);
             frames.push(frameData);
-            logger.debug(`Captured frame ${i + 1}/${totalFrames} for instance ${this.id}`);
+            logger.debug(`Captured frame ${i + 1}/${totalFrames} (value: ${value.toFixed(4)}) for instance ${this.id}`);
           } catch (frameError) {
             logger.warn(`Failed to capture frame ${i + 1}/${totalFrames} for instance ${this.id}:`, frameError);
             // Continue with next frame rather than failing completely
