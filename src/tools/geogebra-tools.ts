@@ -2922,5 +2922,406 @@ export const geogebraTools: ToolDefinition[] = [
         };
       }
     }
+  },
+
+  // ==================== File Export Tools ====================
+  
+  {
+    tool: {
+      name: 'geogebra_export_png_file',
+      description: 'Export the current GeoGebra construction as a PNG file to disk',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          filename: {
+            type: 'string',
+            description: 'Output filename (without extension, will add .png automatically). If not provided, generates timestamp-based name'
+          },
+          outputDir: {
+            type: 'string',
+            description: 'Output directory path (defaults to ./exports or EXPORT_DIR env variable)'
+          },
+          width: {
+            type: 'number',
+            description: 'Width of the exported image in pixels'
+          },
+          height: {
+            type: 'number',
+            description: 'Height of the exported image in pixels'
+          },
+          scale: {
+            type: 'number',
+            description: 'Scale factor for the exported image (default: 1, range: 0.5 to 3)'
+          },
+          transparent: {
+            type: 'boolean',
+            description: 'Whether the background should be transparent (default: false)'
+          },
+          dpi: {
+            type: 'number',
+            description: 'Dots per inch for the exported image (default: 72)'
+          },
+          showAxes: {
+            type: 'boolean',
+            description: 'Whether to show coordinate axes (default: true)'
+          },
+          showGrid: {
+            type: 'boolean',
+            description: 'Whether to show coordinate grid (default: false)'
+          }
+        },
+        required: []
+      }
+    },
+    handler: async (params) => {
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        
+        // Get parameters
+        const scale = Math.min(Math.max((params['scale'] as number) || 1, 0.5), 3);
+        const transparent = (params['transparent'] as boolean) || false;
+        const dpi = (params['dpi'] as number) || 72;
+        const width = params['width'] as number;
+        const height = params['height'] as number;
+        const showAxes = params['showAxes'] !== undefined ? (params['showAxes'] as boolean) : true;
+        const showGrid = (params['showGrid'] as boolean) || false;
+
+        const instance = await instancePool.getDefaultInstance();
+
+        // Set view options if specified
+        if (showAxes !== undefined || showGrid !== undefined) {
+          await instance.setAxesVisible(showAxes, showAxes);
+          await instance.setGridVisible(showGrid);
+        }
+
+        // Export PNG as base64
+        const pngBase64 = await instance.exportPNG(scale, transparent, dpi, width, height);
+
+        // Generate filename if not provided
+        const timestamp = Date.now();
+        const baseFilename = (params['filename'] as string) || `geogebra_${timestamp}`;
+        const filename = baseFilename.endsWith('.png') ? baseFilename : `${baseFilename}.png`;
+        
+        // Get output directory
+        const outputDir = (params['outputDir'] as string) || process.env['EXPORT_DIR'] || './exports';
+        if (!fs.existsSync(outputDir)) {
+          fs.mkdirSync(outputDir, { recursive: true });
+        }
+        
+        const outputPath = path.join(outputDir, filename);
+
+        // Convert base64 to buffer and write to file
+        const buffer = Buffer.from(pngBase64, 'base64');
+        fs.writeFileSync(outputPath, buffer);
+
+        const fileSize = fs.statSync(outputPath).size;
+
+        logger.info(`PNG file exported successfully: ${outputPath}`);
+
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: true,
+              format: 'PNG',
+              filename,
+              filePath: outputPath,
+              fileSize,
+              metadata: {
+                scale,
+                width,
+                height,
+                transparent,
+                dpi,
+                showAxes,
+                showGrid
+              }
+            }, null, 2)
+          }]
+        };
+      } catch (error) {
+        logger.error('Failed to export PNG file', error);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: false,
+              error: error instanceof Error ? error.message : String(error)
+            }, null, 2)
+          }],
+          isError: true
+        };
+      }
+    }
+  },
+
+  {
+    tool: {
+      name: 'geogebra_export_gif_file',
+      description: 'Export an animation as a GIF file to disk',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          filename: {
+            type: 'string',
+            description: 'Output filename (without extension, will add .gif automatically). If not provided, generates timestamp-based name'
+          },
+          outputDir: {
+            type: 'string',
+            description: 'Output directory path (defaults to ./exports or EXPORT_DIR env variable)'
+          },
+          duration: {
+            type: 'number',
+            description: 'Total animation duration in milliseconds (default: 5000)'
+          },
+          frameRate: {
+            type: 'number',
+            description: 'Frame rate in frames per second (default: 10, range: 1 to 30)'
+          },
+          quality: {
+            type: 'number',
+            description: 'GIF quality (default: 80, range: 1 to 100)'
+          },
+          width: {
+            type: 'number',
+            description: 'Width of the exported GIF in pixels (default: 800)'
+          },
+          height: {
+            type: 'number',
+            description: 'Height of the exported GIF in pixels (default: 600)'
+          }
+        },
+        required: []
+      }
+    },
+    handler: async (params) => {
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const { AnimationConverter } = require('../utils/animation-converter');
+        const converter = new AnimationConverter();
+        
+        // Get parameters
+        const duration = (params['duration'] as number) || 5000;
+        const frameRate = Math.min(Math.max((params['frameRate'] as number) || 10, 1), 30);
+        const quality = Math.min(Math.max((params['quality'] as number) || 80, 1), 100);
+        const width = (params['width'] as number) || 800;
+        const height = (params['height'] as number) || 600;
+
+        const instance = await instancePool.getDefaultInstance();
+
+        logger.info(`Exporting GIF animation: ${duration}ms at ${frameRate}fps`);
+
+        // Export animation frames
+        const frames = await instance.exportAnimation({
+          duration,
+          frameRate,
+          format: 'frames',
+          width,
+          height
+        });
+
+        if (!Array.isArray(frames) || frames.length === 0) {
+          throw new Error('No animation frames captured');
+        }
+
+        // Generate filename if not provided
+        const timestamp = Date.now();
+        const baseFilename = (params['filename'] as string) || `animation_${timestamp}`;
+        const filename = baseFilename.endsWith('.gif') ? baseFilename : `${baseFilename}.gif`;
+        
+        // Get output directory
+        const outputDir = (params['outputDir'] as string) || process.env['EXPORT_DIR'] || './exports';
+        if (!fs.existsSync(outputDir)) {
+          fs.mkdirSync(outputDir, { recursive: true });
+        }
+        
+        const outputPath = path.join(outputDir, filename);
+
+        // Convert frames to GIF
+        const gifPath = await converter.convertToGIF({
+          frames,
+          outputPath,
+          format: 'gif',
+          frameRate,
+          quality,
+          width,
+          height
+        });
+
+        const fileSize = fs.statSync(gifPath).size;
+
+        logger.info(`GIF file exported successfully: ${gifPath}`);
+
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: true,
+              format: 'GIF',
+              filename,
+              filePath: gifPath,
+              fileSize,
+              metadata: {
+                duration,
+                frameRate,
+                frameCount: frames.length,
+                quality,
+                width,
+                height
+              }
+            }, null, 2)
+          }]
+        };
+      } catch (error) {
+        logger.error('Failed to export GIF file', error);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: false,
+              error: error instanceof Error ? error.message : String(error)
+            }, null, 2)
+          }],
+          isError: true
+        };
+      }
+    }
+  },
+
+  {
+    tool: {
+      name: 'geogebra_export_mp4_file',
+      description: 'Export an animation as an MP4 video file to disk',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          filename: {
+            type: 'string',
+            description: 'Output filename (without extension, will add .mp4 automatically). If not provided, generates timestamp-based name'
+          },
+          outputDir: {
+            type: 'string',
+            description: 'Output directory path (defaults to ./exports or EXPORT_DIR env variable)'
+          },
+          duration: {
+            type: 'number',
+            description: 'Total animation duration in milliseconds (default: 5000)'
+          },
+          frameRate: {
+            type: 'number',
+            description: 'Frame rate in frames per second (default: 30, range: 10 to 60)'
+          },
+          quality: {
+            type: 'number',
+            description: 'Video quality CRF value (default: 23, range: 0-51, lower is better)'
+          },
+          width: {
+            type: 'number',
+            description: 'Width of the exported video in pixels (default: 800)'
+          },
+          height: {
+            type: 'number',
+            description: 'Height of the exported video in pixels (default: 600)'
+          }
+        },
+        required: []
+      }
+    },
+    handler: async (params) => {
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const { AnimationConverter } = require('../utils/animation-converter');
+        const converter = new AnimationConverter();
+        
+        // Get parameters
+        const duration = (params['duration'] as number) || 5000;
+        const frameRate = Math.min(Math.max((params['frameRate'] as number) || 30, 10), 60);
+        const quality = Math.min(Math.max((params['quality'] as number) || 23, 0), 51);
+        const width = (params['width'] as number) || 800;
+        const height = (params['height'] as number) || 600;
+
+        const instance = await instancePool.getDefaultInstance();
+
+        logger.info(`Exporting MP4 video: ${duration}ms at ${frameRate}fps`);
+
+        // Export animation frames
+        const frames = await instance.exportAnimation({
+          duration,
+          frameRate,
+          format: 'frames',
+          width,
+          height
+        });
+
+        if (!Array.isArray(frames) || frames.length === 0) {
+          throw new Error('No animation frames captured');
+        }
+
+        // Generate filename if not provided
+        const timestamp = Date.now();
+        const baseFilename = (params['filename'] as string) || `video_${timestamp}`;
+        const filename = baseFilename.endsWith('.mp4') ? baseFilename : `${baseFilename}.mp4`;
+        
+        // Get output directory
+        const outputDir = (params['outputDir'] as string) || process.env['EXPORT_DIR'] || './exports';
+        if (!fs.existsSync(outputDir)) {
+          fs.mkdirSync(outputDir, { recursive: true });
+        }
+        
+        const outputPath = path.join(outputDir, filename);
+
+        // Convert frames to MP4
+        const mp4Path = await converter.convertToMP4({
+          frames,
+          outputPath,
+          format: 'mp4',
+          frameRate,
+          quality,
+          width,
+          height
+        });
+
+        const fileSize = fs.statSync(mp4Path).size;
+
+        logger.info(`MP4 file exported successfully: ${mp4Path}`);
+
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: true,
+              format: 'MP4',
+              filename,
+              filePath: mp4Path,
+              fileSize,
+              metadata: {
+                duration,
+                frameRate,
+                frameCount: frames.length,
+                quality,
+                width,
+                height,
+                codec: 'H.264'
+              }
+            }, null, 2)
+          }]
+        };
+      } catch (error) {
+        logger.error('Failed to export MP4 file', error);
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              success: false,
+              error: error instanceof Error ? error.message : String(error)
+            }, null, 2)
+          }],
+          isError: true
+        };
+      }
+    }
   }
 ]; 

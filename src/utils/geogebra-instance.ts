@@ -1288,8 +1288,33 @@ export class GeoGebraInstance implements GeoGebraAPI {
         }
 
         // Capture frames with manual animation control
-        // Try common slider names: slider, a, b, t, s
+        // First, try to detect existing slider names
+        const detectedSliders = await this.page!.evaluate(() => {
+          const applet = (window as any).ggbApplet;
+          const sliders = [];
+          try {
+            const allObjects = applet.getAllObjectNames();
+            for (const objName of allObjects) {
+              try {
+                const objType = applet.getObjectType(objName);
+                if (objType === 'slider') {
+                  sliders.push(objName);
+                }
+              } catch (e) {
+                // Ignore individual object errors
+              }
+            }
+          } catch (e) {
+            // If getAllObjectNames fails, return empty array
+          }
+          return sliders;
+        });
+        
+        // Fallback to common slider names if detection fails
         const commonSliderNames = ['slider', 'a', 'b', 't', 's', 'n', 'm'];
+        const sliderNamesToTry = detectedSliders.length > 0 ? detectedSliders : commonSliderNames;
+        
+        logger.debug(`Using slider names for animation: ${JSON.stringify(sliderNamesToTry)}`);
         
         for (let i = 0; i < totalFrames; i++) {
           // Calculate the value for this frame
@@ -1301,7 +1326,7 @@ export class GeoGebraInstance implements GeoGebraAPI {
             const applet = (window as any).ggbApplet;
             let success = false;
             
-            // Try each common slider name
+            // Try each slider name
             for (const sliderName of sliderNames) {
               try {
                 // Use command syntax to set slider value
@@ -1316,7 +1341,7 @@ export class GeoGebraInstance implements GeoGebraAPI {
             }
             
             return { success: false, message: 'No slider found' };
-          }, commonSliderNames, value);
+          }, sliderNamesToTry, value);
           
           if (i === 0) {
             logger.debug(`Slider control result for frame 0: ${JSON.stringify(setResult)}`);
