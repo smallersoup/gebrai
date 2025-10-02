@@ -63,13 +63,9 @@
     "@gebrai/gebrai": "^1.0.1",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-<<<<<<< Updated upstream
-    "puppeteer": "^22.8.2",
-=======
     "express": "^4.21.2",
     "gif-encoder-2": "^1.0.5",
     "puppeteer": "^22.15.0",
->>>>>>> Stashed changes
     "uuid": "^9.0.1",
     "winston": "^3.11.0"
   },
